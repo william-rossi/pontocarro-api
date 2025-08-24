@@ -5,7 +5,7 @@ dotenv.config();
 
 export async function initializeDatabase() {
     try {
-        const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/car_marketplace';
+        const mongoUri = process.env.MONGO_URI!;
         await mongoose.connect(mongoUri);
         console.log('Connected to MongoDB database!');
 

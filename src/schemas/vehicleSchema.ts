@@ -1,12 +1,13 @@
 import { z } from 'zod';
 
-export const carSchema = z.object({
+export const vehicleSchema = z.object({
     make: z.string().min(2, "A marca deve ter no mínimo 2 caracteres").max(50, "Marca muito longa"),
-    carModel: z.string().min(2, "O modelo deve ter no mínimo 2 caracteres").max(50, "Modelo muito longo"),
+    vehicleModel: z.string().min(2, "O modelo deve ter no mínimo 2 caracteres").max(50, "Modelo muito longo"),
     year: z.number().int().min(1900, "Ano inválido").max(new Date().getFullYear() + 1, "Ano inválido"),
     price: z.number().int().optional().nullable().refine(val => val === null || val === undefined || val >= 0, { message: "Preço deve ser um número positivo" }),
     description: z.string().max(500, "Descrição muito longa").optional(),
-    location: z.string().min(2, "A localização deve ter no mínimo 2 caracteres").max(80, "Localização muito longa").optional(),
+    city: z.string().min(2, "A cidade deve ter no mínimo 2 caracteres").max(80, "Cidade muito longa").optional(),
+    state: z.string().min(2, "O estado deve ter no mínimo 2 caracteres").max(80, "Estado muito longo").optional(),
     engineType: z.string().max(50, "Tipo de motor muito longo").optional(),
     vehicleType: z.string().max(50, "Tipo de veículo muito longo").optional(),
     fuelType: z.string().max(50, "Tipo de combustível muito longo").optional(),

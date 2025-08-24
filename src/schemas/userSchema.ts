@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const createUserSchema = z
     .object({
-        username: z // Mapeando 'name' para 'username'
+        username: z
             .string()
             .min(3, "Nome deve ter no mínimo 3 caracteres")
             .max(100, "Nome muito longo"),
@@ -21,11 +21,9 @@ export const createUserSchema = z
             ),
         phone: z
             .string()
-            .min(14, "Telefone inválido")
-            .regex(
-                /^\(\d{2}\)\s\d{4,5}-\d{4}$/,
-                "Telefone deve estar no formato (11) 99999-9999 ou (11) 3333-3333"
-            ),
-            state: z.string().min(1, "Campo obrigatório"),
-            city: z.string().min(1, "Campo obrigatório")
+            .min(1, "Campo obrigatório")
+            .min(14, "Telefone inválido (mínimo 14 caracteres)")
+            .max(15, "Telefone inválido (máximo 15 caracteres)"),
+        state: z.string().min(1, "Campo obrigatório"),
+        city: z.string().min(1, "Campo obrigatório")
     })

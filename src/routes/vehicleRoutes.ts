@@ -1,23 +1,23 @@
 import { Router } from 'express';
 import {
-    getAllCars,
-    searchCars,
-    publishVehicle,
+    getAllVehicles,
+    searchVehicles,
+    addVehicle,
     updateVehicle,
     deleteVehicle,
-    getCarsByLocation
-} from '../controllers/carController';
+    getVehiclesByCityAndState
+} from '../controllers/vehicleController';
 import { authenticateUser } from '../middleware/authMiddleware';
 
 const router = Router();
 
 // Public routes
-router.get('/', getAllCars);
-router.get('/search', searchCars);
-router.get('/by-location', getCarsByLocation);
+router.get('/', getAllVehicles);
+router.get('/search', searchVehicles);
+router.get('/by-city-state', getVehiclesByCityAndState);
 
 // Authenticated routes
-router.post('/', authenticateUser, publishVehicle);
+router.post('/', authenticateUser, addVehicle);
 router.put('/:id', authenticateUser, updateVehicle);
 router.delete('/:id', authenticateUser, deleteVehicle);
 

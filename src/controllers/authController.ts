@@ -9,93 +9,50 @@ import { createUserSchema } from '../schemas/userSchema'; // Import the user sch
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
 /**
- * @swagger
- * /auth/register:
- *   post:
- *     summary: Registra um novo usuário
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - username
- *               - email
- *               - password
- *               - confirmPassword
- *             properties:
- *               username:
- *                 type: string
- *                 description: Nome completo do usuário
- *                 example: João Silva
- *               email:
- *                 type: string
- *                 format: email
- *                 description: Endereço de e-mail do usuário
- *                 example: joao.silva@example.com
- *               password:
- *                 type: string
- *                 format: password
- *                 description: Senha do usuário (mínimo 8 caracteres)
- *                 example: MinhaSenhaForte123!
- *               confirmPassword:
- *                 type: string
- *                 format: password
- *                 description: Confirmação da senha
- *                 example: MinhaSenhaForte123!
- *               phone:
- *                 type: string
- *                 description: Número de telefone do usuário
- *                 example: (11) 99999-9999
- *               location:
- *                 type: string
- *                 description: Localização do usuário
- *                 example: São Paulo, SP
- *     responses:
- *       201:
- *         description: Usuário registrado com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Usuário registrado com sucesso
- *                 accessToken:
- *                   type: string
- *                   description: Token JWT para autenticação
- *                 userId:
- *                   type: string
- *                   description: ID do usuário criado
- *                 refreshToken:
- *                   type: string
- *                   description: Token de atualização para obter novos access tokens
- *       400:
- *         description: Erro de validação ou usuário já existe
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Usuário com este e-mail já existe
- *                 errors:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       path:
- *                         type: array
- *                         items:
- *                           type: string
- *                       message:
- *                         type: string
- *       500:
- *         description: Erro do servidor
+ * @api {post} /auth/register Register a new user
+ * @apiGroup Auth
+ * @apiParam {String} username User's full name
+ * @apiParam {String} email User's email
+ * @apiParam {String} password User's password (min 8 characters)
+ * @apiParam {String} confirmPassword Password confirmation
+ * @apiParam {String} [phone] User's phone number
+ * @apiParam {String} [city] User's city
+ * @apiParam {String} [state] User's state
+ * @apiSuccess {String} message Success message
+ * @apiSuccess {String} accessToken JWT for authentication
+ * @apiSuccess {String} userId ID of the created user
+ * @apiSuccess {String} refreshToken Token to get new access tokens
+ * @apiSuccessExample {json} Success-Response:
+ *     HTTP/1.1 201 Created
+ *     {
+ *       "message": "Usuário registrado com sucesso",
+ *       "accessToken": "eyJhbGciOiJIUzI1Ni...",
+ *       "userId": "60f...",
+ *       "refreshToken": "eyJhbGciOiJIUzI1Ni..."
+ *     }
+ * @apiError {String} message Error message
+ * @apiError {Array} [errors] Validation errors
+ * @apiErrorExample {json} Validation Error-Response:
+ *     HTTP/1.1 400 Bad Request
+ *     {
+ *       "message": "Erro de validação",
+ *       "errors": [
+ *         {
+ *           "path": ["email"],
+ *           "message": "Invalid email"
+ *         }
+ *       ]
+ *     }
+ * @apiErrorExample {json} User Exists Error-Response:
+ *     HTTP/1.1 400 Bad Request
+ *     {
+ *       "message": "Usuário com este e-mail já existe"
+ *     }
+ * @apiErrorExample {json} Server Error-Response:
+ *     HTTP/1.1 500 Internal Server Error
+ *     {
+ *       "message": "Erro do servidor"
+ *     }
  */
 export const registerUser = async (req: Request, res: Response) => {
     try {
@@ -149,63 +106,40 @@ export const registerUser = async (req: Request, res: Response) => {
 };
 
 /**
- * @swagger
- * /auth/login:
- *   post:
- *     summary: Autentica um usuário
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *                 description: E-mail do usuário
- *                 example: joao.silva@example.com
- *               password:
- *                 type: string
- *                 format: password
- *                 description: Senha do usuário
- *                 example: MinhaSenhaForte123!
- *     responses:
- *       200:
- *         description: Login bem-sucedido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Login bem-sucedido
- *                 accessToken:
- *                   type: string
- *                   description: Token JWT para autenticação
- *                 userId:
- *                   type: string
- *                   description: ID do usuário logado
- *                 refreshToken:
- *                   type: string
- *                   description: Token de atualização para obter novos access tokens
- *       400:
- *         description: Credenciais inválidas
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Credenciais inválidas
- *       500:
- *         description: Erro do servidor
+ * @api {post} /auth/login Authenticate a user
+ * @apiGroup Auth
+ * @apiParam {String} email User's email
+ * @apiParam {String} password User's password
+ * @apiSuccess {String} message Success message
+ * @apiSuccess {String} accessToken JWT for authentication
+ * @apiSuccess {Object} user Logged in user object (excluding password and refreshToken)
+ * @apiSuccess {String} refreshToken Token to get new access tokens
+ * @apiSuccessExample {json} Success-Response:
+ *     HTTP/1.1 200 OK
+ *     {
+ *       "message": "Login bem-sucedido",
+ *       "accessToken": "eyJhbGciOiJIUzI1Ni...",
+ *       "user": {
+ *         "_id": "60f...",
+ *         "username": "João Silva",
+ *         "email": "joao.silva@example.com",
+ *         "phone": "(11) 99999-9999",
+ *         "city": "São Paulo",
+ *         "state": "SP"
+ *       },
+ *       "refreshToken": "eyJhbGciOiJIUzI1Ni..."
+ *     }
+ * @apiError {String} message Error message
+ * @apiErrorExample {json} Error-Response:
+ *     HTTP/1.1 400 Bad Request
+ *     {
+ *       "message": "Credenciais inválidas"
+ *     }
+ * @apiErrorExample {json} Server Error-Response:
+ *     HTTP/1.1 500 Internal Server Error
+ *     {
+ *       "message": "Erro do servidor"
+ *     }
  */
 export const loginUser = async (req: Request, res: Response) => {
     const { email, password } = req.body;
