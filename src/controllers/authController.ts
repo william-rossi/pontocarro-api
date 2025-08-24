@@ -233,7 +233,11 @@ export const loginUser = async (req: Request, res: Response) => {
         user.refreshToken = newRefreshToken; // Store the JWT refresh token directly
         await user.save();
 
-        res.status(200).json({ message: 'Login bem-sucedido', accessToken, userId: user._id, refreshToken: newRefreshToken });
+        const userResponse = user.toObject();
+        delete userResponse.password;
+        delete userResponse.refreshToken;
+
+        res.status(200).json({ message: 'Login bem-sucedido', accessToken, user: userResponse, refreshToken: newRefreshToken });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Erro do servidor' });
