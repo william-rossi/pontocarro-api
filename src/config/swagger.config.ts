@@ -16,18 +16,54 @@ const swaggerOptions = {
       // Adicione outros servidores de produção aqui quando houver
     ],
     components: {
-        securitySchemes: {
-            bearerAuth: {
-                type: 'http',
-                scheme: 'bearer',
-                bearerFormat: 'JWT',
-            },
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
         },
+      },
+      schemas: {
+        User: {
+          type: 'object',
+          required: ['email', 'password'],
+          properties: {
+            id: {
+              type: 'string',
+              description: 'User unique ID.',
+            },
+            email: {
+              type: 'string',
+              description: 'User email address.',
+            },
+            password: {
+              type: 'string',
+              description: 'User password.',
+            },
+            phone: {
+              type: 'string',
+              description: 'User phone number.',
+            },
+            city: {
+              type: 'string',
+              description: 'User city.',
+            },
+            state: {
+              type: 'string',
+              description: 'User state.',
+            },
+            refreshToken: {
+              type: 'string',
+              description: 'User refresh token.',
+            },
+          },
+        },
+      },
     },
     security: [
-        {
-            bearerAuth: [],
-        },
+      {
+        bearerAuth: [],
+      },
     ],
   },
   apis: [

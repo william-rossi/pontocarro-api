@@ -26,8 +26,6 @@ export const createUserSchema = z
                 /^\(\d{2}\)\s\d{4,5}-\d{4}$/,
                 "Telefone deve estar no formato (11) 99999-9999 ou (11) 3333-3333"
             ),
-        location: z
-            .string()
-            .min(2, "Localização é obrigatória")
-            .max(80, "Localização muito longa"),
+            state: z.string().min(1, "Campo obrigatório"),
+            city: z.string().min(1, "Campo obrigatório")
     })

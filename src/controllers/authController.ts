@@ -102,7 +102,7 @@ export const registerUser = async (req: Request, res: Response) => {
         // Validate request body with zod schema
         const validatedData = createUserSchema.parse(req.body);
 
-        const { username, email, password, phone, location } = validatedData;
+        const { username, email, password, phone, city, state } = validatedData;
 
         const existingUser = await User.findOne({ email });
         if (existingUser) {
@@ -124,7 +124,8 @@ export const registerUser = async (req: Request, res: Response) => {
             email,
             password: hashedPassword,
             phone,
-            location
+            city,
+            state
         });
 
         await newUser.save();
@@ -133,7 +134,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
         // Generate a JWT refresh token
         const refreshToken = jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: '7d' }); // Refresh token valid for 7 days
-        
+
         newUser.refreshToken = refreshToken; // Store the JWT refresh token directly
         await newUser.save();
 
@@ -229,7 +230,7 @@ export const loginUser = async (req: Request, res: Response) => {
 
         // Generate a new JWT refresh token for login
         const newRefreshToken = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' }); // Refresh token valid for 7 days
-        
+
         user.refreshToken = newRefreshToken; // Store the JWT refresh token directly
         await user.save();
 

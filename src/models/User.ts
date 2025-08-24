@@ -4,8 +4,9 @@ export interface User extends Document {
     username: string;
     email: string;
     password?: string;
-    phone?: string; // New field for phone number
-    location?: string; // New field for user location
+    phone?: string;
+    city?: string;
+    state?: string;
     created_at?: Date;
     refreshToken?: string; // New field for refresh token
 }
@@ -15,7 +16,8 @@ const userSchema = new Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     phone: { type: String, unique: true }, // Add phone field to schema
-    location: { type: String }, // Add location field to schema
+    city: { type: String },
+    state: { type: String },
     created_at: { type: Date, default: Date.now },
     refreshToken: { type: String } // Add refresh token field to schema
 });
