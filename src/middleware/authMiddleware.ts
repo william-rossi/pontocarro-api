@@ -13,12 +13,15 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as { id: string }; // id is now string for MongoDB _id
+        (req as any).userId = decoded.id; // Attach user ID to request
         const user = await User.findById(decoded.id);
-        (req as any).user = user; // Attach user to request
-        if (!(req as any).user) {
+        if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
+        // We don't need to attach the full user object if only the ID is used
+        // (req as any).user = user; 
         next();
+
     } catch (err) {
         res.status(401).json({ message: 'Token is not valid' });
     }

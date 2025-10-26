@@ -1,6 +1,11 @@
-declare namespace Express {
-    export interface Request {
-        userId?: string;
+import { Request } from 'express';
+
+declare global {
+    namespace Express {
+        interface Request {
+            userId?: string; // Add userId to the Request interface
+            user?: any; // Keep this if you still attach the full user object elsewhere
+        }
     }
 }
 

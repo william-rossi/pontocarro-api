@@ -7,6 +7,7 @@ export interface User extends Document {
     phone?: string;
     city?: string;
     state?: string;
+    refreshToken?: string; // Add refreshToken to the User interface
     created_at?: Date;
 }
 
@@ -17,6 +18,7 @@ const userSchema = new Schema({
     phone: { type: String, unique: true }, // Add phone field to schema
     city: { type: String },
     state: { type: String },
+    refreshToken: { type: String }, // Add refreshToken to the schema
     created_at: { type: Date, default: Date.now }
 });
 
