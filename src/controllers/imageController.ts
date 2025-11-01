@@ -112,6 +112,104 @@ export const getImagesByVehicleId = async (req: Request, res: Response) => {
     }
 };
 
+/**
+ * @swagger
+ * /images/{vehicleId}/first:
+ *   get:
+ *     summary: Get the first image for a specific vehicle
+ *     tags: [Images]
+ *     parameters:
+ *       - in: path
+ *         name: vehicleId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the vehicle to retrieve the first image for
+ *     responses:
+ *       200:
+ *         description: First image found for the vehicle
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Image'
+ *       404:
+ *         description: No images found for this vehicle
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+export const getFirstImageByVehicleId = async (req: Request, res: Response) => {
+    try {
+        const { vehicleId } = req.params;
+        const image = await Image.findOne({ vehicle_id: vehicleId }).sort({ created_at: 1 }); // Get the first image by creation date
+
+        if (!image) {
+            return res.status(404).json({ message: 'No images found for this vehicle.' });
+        }
+
+        res.status(200).json(image);
+    } catch (err: any) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching first image', error: err.message });
+    }
+};
+
+/**
+ * @swagger
+ * /images/{imageId}:
+ *   get:
+ *     summary: Get a specific image by its ID
+ *     tags: [Images]
+ *     parameters:
+ *       - in: path
+ *         name: imageId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the image to retrieve
+ *     responses:
+ *       200:
+ *         description: Image found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Image'
+ *       404:
+ *         description: Image not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+export const getImageById = async (req: Request, res: Response) => {
+    try {
+        const { imageId } = req.params;
+        const image = await Image.findById(imageId);
+
+        if (!image) {
+            return res.status(404).json({ message: 'Image not found.' });
+        }
+
+        res.status(200).json(image);
+    } catch (err: any) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching image', error: err.message });
+    }
+};
+
 export const deleteImage = async (req: Request, res: Response) => {
     try {
         const { id, imageId } = req.params; // id is vehicleId, imageId is the image _id

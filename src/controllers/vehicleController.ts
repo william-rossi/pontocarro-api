@@ -9,35 +9,67 @@ import path from 'path';
  * @swagger
  * /vehicles:
  *   get:
- *     summary: Get all available vehicles
+ *     summary: Get all available vehicles with pagination
  *     tags: [Vehicles]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: "Page number (default: 1)"
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: "Items per page (default: 10)"
  *     responses:
  *       200:
- *         description: List of vehicles
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Vehicle'
- *       500:
- *         description: Server error
+ *         description: List of vehicles with pagination information
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 message:
- *                   type: string
- *                   example: Server error
+ *                 vehicles:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Vehicle'
+ *                 currentPage:
+ *                   type: integer
+ *                   example: 1
+ *                 totalPages:
+ *                   type: integer
+ *                   example: 5
+ *                 totalVehicles:
+ *                   type: integer
+ *                   example: 42
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 export const getAllVehicles = async (req: Request, res: Response) => {
     try {
-        const vehicles = await Vehicle.find();
-        res.status(200).json(vehicles);
-    } catch (err) {
+        const page = parseInt(req.query.page as string) || 1; // Default to page 1
+        const limit = parseInt(req.query.limit as string) || 10; // Default to 10 items per page
+        const skip = (page - 1) * limit;
+
+        const vehicles = await Vehicle.find().skip(skip).limit(limit);
+        const totalVehicles = await Vehicle.countDocuments(); // Get total count for pagination
+
+        res.status(200).json({
+            vehicles,
+            currentPage: page,
+            totalPages: Math.ceil(totalVehicles / limit),
+            totalVehicles,
+        });
+    } catch (err: any) {
         console.error(err);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Server error', error: err.message });
     }
 };
 
@@ -45,7 +77,7 @@ export const getAllVehicles = async (req: Request, res: Response) => {
  * @swagger
  * /vehicles/search:
  *   get:
- *     summary: Search vehicles by multiple criteria
+ *     summary: Search vehicles by multiple criteria with pagination
  *     tags: [Vehicles]
  *     parameters:
  *       - in: query
@@ -113,28 +145,52 @@ export const getAllVehicles = async (req: Request, res: Response) => {
  *         schema:
  *           type: number
  *         description: Mileage
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: "Page number (default: 1)"
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: "Items per page (default: 10)"
  *     responses:
  *       200:
- *         description: List of filtered vehicles
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Vehicle'
- *       500:
- *         description: Server error
+ *         description: List of filtered vehicles with pagination information
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 message:
- *                   type: string
- *                   example: Server error
+ *                 vehicles:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Vehicle'
+ *                 currentPage:
+ *                   type: integer
+ *                   example: 1
+ *                 totalPages:
+ *                   type: integer
+ *                   example: 5
+ *                 totalVehicles:
+ *                   type: integer
+ *                   example: 42
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 export const searchVehicles = async (req: Request, res: Response) => {
     const { brand, vehicleModel, engine, year, minPrice, maxPrice, state, city, fuel, exchange, bodyType, color, mileage } = req.query;
+    const page = parseInt(req.query.page as string) || 1; // Default to page 1
+    const limit = parseInt(req.query.limit as string) || 10; // Default to 10 items per page
+    const skip = (page - 1) * limit;
+
     let filter: any = {};
 
     if (brand) {
@@ -178,11 +234,18 @@ export const searchVehicles = async (req: Request, res: Response) => {
     }
 
     try {
-        const filteredVehicles = await Vehicle.find(filter);
-        res.status(200).json(filteredVehicles);
-    } catch (err) {
+        const filteredVehicles = await Vehicle.find(filter).skip(skip).limit(limit);
+        const totalVehicles = await Vehicle.countDocuments(filter); // Get total count for pagination with filter
+
+        res.status(200).json({
+            vehicles: filteredVehicles,
+            currentPage: page,
+            totalPages: Math.ceil(totalVehicles / limit),
+            totalVehicles,
+        });
+    } catch (err: any) {
         console.error(err);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Server error', error: err.message });
     }
 };
 
