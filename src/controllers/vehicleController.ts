@@ -81,6 +81,11 @@ export const getAllVehicles = async (req: Request, res: Response) => {
  *     tags: [Vehicles]
  *     parameters:
  *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         description: Vehicle title
+ *       - in: query
  *         name: brand
  *         schema:
  *           type: string
@@ -141,10 +146,15 @@ export const getAllVehicles = async (req: Request, res: Response) => {
  *           type: string
  *         description: Vehicle color
  *       - in: query
- *         name: mileage
+ *         name: minMileage
  *         schema:
  *           type: number
- *         description: Mileage
+ *         description: Minimum mileage
+ *       - in: query
+ *         name: maxMileage
+ *         schema:
+ *           type: number
+ *         description: Maximum mileage
  *       - in: query
  *         name: page
  *         schema:
@@ -186,31 +196,43 @@ export const getAllVehicles = async (req: Request, res: Response) => {
  *               $ref: '#/components/schemas/Error'
  */
 export const searchVehicles = async (req: Request, res: Response) => {
-    const { brand, vehicleModel, engine, year, minPrice, maxPrice, state, city, fuel, exchange, bodyType, color, mileage } = req.query;
+    const { brand, vehicleModel, engine, year, minPrice, maxPrice, state, city, fuel, exchange, bodyType, color, mileage, name, minMileage, maxMileage } = req.query; // Adicionei minMileage e maxMileage
+
     const page = parseInt(req.query.page as string) || 1; // Default to page 1
     const limit = parseInt(req.query.limit as string) || 10; // Default to 10 items per page
     const skip = (page - 1) * limit;
 
     let filter: any = {};
 
+    if (name) { // Usando 'name' para o título
+        filter.title = { $regex: new RegExp(name as string, 'i') };
+    }
     if (brand) {
-        filter.brand = { $regex: new RegExp(brand as string, 'i') }; // Case-insensitive search
+        filter.brand = { $regex: new RegExp(brand as string, 'i') };
     }
     if (vehicleModel) {
-        filter.vehicleModel = { $regex: new RegExp(vehicleModel as string, 'i') }; // Case-insensitive search
+        filter.vehicleModel = { $regex: new RegExp(vehicleModel as string, 'i') };
     }
     if (engine) {
         filter.engine = { $regex: new RegExp(engine as string, 'i') };
     }
-    if (year) {
-        filter.year = parseInt(year as string);
+
+    // Validação para campos numéricos
+    const parsedYear = parseInt(year as string);
+    if (!isNaN(parsedYear)) {
+        filter.year = parsedYear;
     }
-    if (minPrice) {
-        filter.price = { ...filter.price, $gte: parseFloat(minPrice as string) };
+
+    const parsedMinPrice = parseFloat(minPrice as string);
+    if (!isNaN(parsedMinPrice)) {
+        filter.price = { ...filter.price, $gte: parsedMinPrice };
     }
-    if (maxPrice) {
-        filter.price = { ...filter.price, $lte: parseFloat(maxPrice as string) };
+
+    const parsedMaxPrice = parseFloat(maxPrice as string);
+    if (!isNaN(parsedMaxPrice)) {
+        filter.price = { ...filter.price, $lte: parsedMaxPrice };
     }
+
     if (state) {
         filter.state = { $regex: new RegExp(state as string, 'i') };
     }
@@ -229,13 +251,20 @@ export const searchVehicles = async (req: Request, res: Response) => {
     if (color) {
         filter.color = { $regex: new RegExp(color as string, 'i') };
     }
-    if (mileage) {
-        filter.mileage = parseInt(mileage as string);
+
+    const parsedMinMileage = parseInt(minMileage as string);
+    if (!isNaN(parsedMinMileage)) {
+        filter.mileage = { ...filter.mileage, $gte: parsedMinMileage };
+    }
+
+    const parsedMaxMileage = parseInt(maxMileage as string);
+    if (!isNaN(parsedMaxMileage)) {
+        filter.mileage = { ...filter.mileage, $lte: parsedMaxMileage };
     }
 
     try {
         const filteredVehicles = await Vehicle.find(filter).skip(skip).limit(limit);
-        const totalVehicles = await Vehicle.countDocuments(filter); // Get total count for pagination with filter
+        const totalVehicles = await Vehicle.countDocuments(filter);
 
         res.status(200).json({
             vehicles: filteredVehicles,

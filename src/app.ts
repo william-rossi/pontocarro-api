@@ -44,6 +44,13 @@ const swaggerOptions = {
         ],
     },
     components: {
+        securitySchemes: {
+            bearerAuth: {
+                type: 'http',
+                scheme: 'bearer',
+                bearerFormat: 'JWT',
+            },
+        },
         schemas: {
             Vehicle: {
                 type: 'object',
