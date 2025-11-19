@@ -67,7 +67,7 @@ const swaggerOptions = {
                     state: { type: 'string', example: 'SP' },
                     city: { type: 'string', example: 'São Paulo' },
                     fuel: { type: 'string', example: 'Gasolina' },
-                    exchange: { type: 'string', example: 'Manual' },
+                    transmission: { type: 'string', example: 'Manual' },
                     bodyType: { type: 'string', example: 'Hatch' },
                     color: { type: 'string', example: 'Azul' },
                     description: { type: 'string', example: 'Fusca em excelente estado de conservação.' },

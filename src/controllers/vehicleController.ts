@@ -116,6 +116,16 @@ export const getAllVehicles = async (req: Request, res: Response) => {
  *           type: number
  *         description: Maximum price
  *       - in: query
+ *         name: minYear
+ *         schema:
+ *           type: number
+ *         description: Minimum year
+ *       - in: query
+ *         name: maxYear
+ *         schema:
+ *           type: number
+ *         description: Maximum year
+ *       - in: query
  *         name: state
  *         schema:
  *           type: string
@@ -131,7 +141,7 @@ export const getAllVehicles = async (req: Request, res: Response) => {
  *           type: string
  *         description: Vehicle fuel type
  *       - in: query
- *         name: exchange
+ *         name: transmission
  *         schema:
  *           type: string
  *         description: Vehicle transmission type
@@ -196,7 +206,7 @@ export const getAllVehicles = async (req: Request, res: Response) => {
  *               $ref: '#/components/schemas/Error'
  */
 export const searchVehicles = async (req: Request, res: Response) => {
-    const { brand, vehicleModel, engine, year, minPrice, maxPrice, state, city, fuel, exchange, bodyType, color, mileage, name, minMileage, maxMileage } = req.query; // Adicionei minMileage e maxMileage
+    const { brand, vehicleModel, engine, year, minPrice, maxPrice, state, city, fuel, transmission, bodyType, color, mileage, name, minMileage, maxMileage, minYear, maxYear } = req.query; // Adicionei minMileage, maxMileage, minYear e maxYear
 
     const page = parseInt(req.query.page as string) || 1; // Default to page 1
     const limit = parseInt(req.query.limit as string) || 10; // Default to 10 items per page
@@ -242,8 +252,8 @@ export const searchVehicles = async (req: Request, res: Response) => {
     if (fuel) {
         filter.fuel = { $regex: new RegExp(fuel as string, 'i') };
     }
-    if (exchange) {
-        filter.exchange = { $regex: new RegExp(exchange as string, 'i') };
+    if (transmission) {
+        filter.transmission = { $regex: new RegExp(transmission as string, 'i') };
     }
     if (bodyType) {
         filter.bodyType = { $regex: new RegExp(bodyType as string, 'i') };
@@ -260,6 +270,16 @@ export const searchVehicles = async (req: Request, res: Response) => {
     const parsedMaxMileage = parseInt(maxMileage as string);
     if (!isNaN(parsedMaxMileage)) {
         filter.mileage = { ...filter.mileage, $lte: parsedMaxMileage };
+    }
+
+    const parsedMinYear = parseInt(minYear as string);
+    if (!isNaN(parsedMinYear)) {
+        filter.year = { ...filter.year, $gte: parsedMinYear };
+    }
+
+    const parsedMaxYear = parseInt(maxYear as string);
+    if (!isNaN(parsedMaxYear)) {
+        filter.year = { ...filter.year, $lte: parsedMaxYear };
     }
 
     try {
@@ -368,7 +388,7 @@ export const getVehiclesByCityAndState = async (req: Request, res: Response) => 
  *               - state
  *               - city
  *               - fuel
- *               - exchange
+ *               - transmission
  *               - bodyType
  *               - color
  *               - description
@@ -406,7 +426,7 @@ export const getVehiclesByCityAndState = async (req: Request, res: Response) => 
  *               fuel:
  *                 type: string
  *                 example: Gasolina
- *               exchange:
+ *               transmission:
  *                 type: string
  *                 example: Manual
  *               bodyType:
@@ -487,7 +507,7 @@ export const addVehicle = async (req: Request, res: Response) => {
         }
         const validatedData = vehicleSchema.parse(req.body);
 
-        const { title, brand, vehicleModel, engine, year, price, mileage, state, city, fuel, exchange, bodyType, color, description, features, announcerName, announcerEmail, announcerPhone } = validatedData;
+        const { title, brand, vehicleModel, engine, year, price, mileage, state, city, fuel, transmission, bodyType, color, description, features, announcerName, announcerEmail, announcerPhone } = validatedData;
 
         const newVehicle = new Vehicle({
             owner_id: req.userId, // Obtained from authentication middleware
@@ -501,7 +521,7 @@ export const addVehicle = async (req: Request, res: Response) => {
             state,
             city,
             fuel,
-            exchange,
+            transmission,
             bodyType,
             color,
             description,
@@ -578,7 +598,7 @@ export const addVehicle = async (req: Request, res: Response) => {
  *               fuel:
  *                 type: string
  *                 example: Gasolina
- *               exchange:
+ *               transmission:
  *                 type: string
  *                 example: Manual
  *               bodyType:

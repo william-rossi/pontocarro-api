@@ -14,7 +14,7 @@ export interface Vehicle extends Document {
     state: string;
     city: string;
     fuel: string;
-    exchange: string;
+    transmission: string;
     bodyType: string;
     color: string;
     description: string;
@@ -39,7 +39,7 @@ const vehicleSchema = new Schema({
     state: { type: String, required: true },
     city: { type: String, required: true },
     fuel: { type: String, required: true },
-    exchange: { type: String, required: true },
+    transmission: { type: String, required: true },
     bodyType: { type: String, required: true },
     color: { type: String, required: true },
     description: { type: String, required: true },

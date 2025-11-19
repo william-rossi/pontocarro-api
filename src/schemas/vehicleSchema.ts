@@ -11,7 +11,7 @@ export const vehicleSchema = z.object({
     state: z.string().min(1, "Estado é obrigatório"),
     city: z.string().min(1, "Cidade é obrigatória"),
     fuel: z.string().min(1, "Combustível é obrigatório"),
-    exchange: z.string().min(1, "Câmbio é obrigatório"),
+    transmission: z.string().min(1, "Câmbio é obrigatório"),
     bodyType: z.string().min(1, "Tipo de carroceria é obrigatório"),
     color: z.string().min(1, "Cor é obrigatória").max(50, "Cor muito longa"),
     description: z.string().min(1, "Descrição é obrigatória").max(1000, "Descrição muito longa"),
