@@ -4,6 +4,7 @@ import { vehicleSchema } from '../schemas/vehicleSchema'; // Import vehicleSchem
 import { z } from 'zod'; // Import zod for validation errors
 import fs from 'fs';
 import path from 'path';
+import Image from '../models/Image'; // Import the Image model
 
 /**
  * @swagger
@@ -24,6 +25,18 @@ import path from 'path';
  *           type: integer
  *           minimum: 1
  *         description: "Items per page (default: 10)"
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: ['createdAt', 'price', 'year', 'mileage']
+ *         description: "Sort by field (default: 'createdAt')"
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: ['asc', 'desc']
+ *         description: "Sort order (default: 'desc' for createdAt, 'asc' for others)"
  *     responses:
  *       200:
  *         description: List of vehicles with pagination information
@@ -45,6 +58,9 @@ import path from 'path';
  *                 totalVehicles:
  *                   type: integer
  *                   example: 42
+ *                 firstImageUrl:
+ *                   type: string
+ *                   example: /uploads/vehicles/some_image.jpg
  *       500:
  *         description: Server error
  *         content:
@@ -56,13 +72,34 @@ export const getAllVehicles = async (req: Request, res: Response) => {
     try {
         const page = parseInt(req.query.page as string) || 1; // Default to page 1
         const limit = parseInt(req.query.limit as string) || 10; // Default to 10 items per page
+        const sortBy = req.query.sortBy as string || 'createdAt'; // Default sort by 'createdAt'
+        const sortOrder = req.query.sortOrder as string || (sortBy === 'createdAt' ? 'desc' : 'asc'); // Default 'desc' for createdAt, 'asc' for others
+
         const skip = (page - 1) * limit;
 
-        const vehicles = await Vehicle.find().skip(skip).limit(limit);
+        const sort: { [key: string]: 1 | -1 } = {};
+        sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+        const vehicles = await Vehicle.find()
+            .select('-description -features -images') // Exclude description and features
+            .sort(sort)
+            .skip(skip)
+            .limit(limit);
+
+        // Manually get image URLs for firstImageUrl without populating the whole array
+        const vehiclesWithFirstImage = await Promise.all(vehicles.map(async (vehicle: any) => {
+            const firstImageDoc = await Image.findOne({ vehicle_id: vehicle._id }).select('imageUrl').lean();
+            const firstImageUrl = firstImageDoc ? firstImageDoc.imageUrl : null;
+
+            const vehicleObject = vehicle.toJSON();
+            // The images array is not populated, so no need to delete it. It won't be there.
+            return { ...vehicleObject, firstImageUrl };
+        }));
+
         const totalVehicles = await Vehicle.countDocuments(); // Get total count for pagination
 
         res.status(200).json({
-            vehicles,
+            vehicles: vehiclesWithFirstImage,
             currentPage: page,
             totalPages: Math.ceil(totalVehicles / limit),
             totalVehicles,
@@ -84,7 +121,7 @@ export const getAllVehicles = async (req: Request, res: Response) => {
  *         name: name
  *         schema:
  *           type: string
- *         description: Vehicle title
+ *         description: Search term for title, brand, model, color, year, state, or city
  *       - in: query
  *         name: brand
  *         schema:
@@ -198,6 +235,9 @@ export const getAllVehicles = async (req: Request, res: Response) => {
  *                 totalVehicles:
  *                   type: integer
  *                   example: 42
+ *                 firstImageUrl:
+ *                   type: string
+ *                   example: /uploads/vehicles/some_image.jpg
  *       500:
  *         description: Server error
  *         content:
@@ -214,8 +254,24 @@ export const searchVehicles = async (req: Request, res: Response) => {
 
     let filter: any = {};
 
-    if (name) { // Usando 'name' para o título
-        filter.title = { $regex: new RegExp(name as string, 'i') };
+    if (name) {
+        const keywords = (name as string).split(' ').filter(Boolean); // Split by space and remove empty strings
+        const keywordFilters = keywords.map(keyword => {
+            const searchRegex = new RegExp(keyword, 'i');
+            const yearSearch = parseInt(keyword);
+            return {
+                $or: [
+                    { title: searchRegex },
+                    { brand: searchRegex },
+                    { vehicleModel: searchRegex },
+                    { color: searchRegex },
+                    { state: searchRegex },
+                    { city: searchRegex },
+                    ...(isNaN(yearSearch) ? [] : [{ year: yearSearch }]), // Add year search only if it's a valid number
+                ]
+            };
+        });
+        filter.$and = [...(filter.$and || []), ...keywordFilters];
     }
     if (brand) {
         filter.brand = { $regex: new RegExp(brand as string, 'i') };
@@ -283,11 +339,24 @@ export const searchVehicles = async (req: Request, res: Response) => {
     }
 
     try {
-        const filteredVehicles = await Vehicle.find(filter).skip(skip).limit(limit);
+        const filteredVehicles = await Vehicle.find(filter)
+            .select('-description -features -images') // Exclude description and features
+            .skip(skip)
+            .limit(limit);
+
+        const vehiclesWithFirstImage = await Promise.all(filteredVehicles.map(async (vehicle: any) => {
+            const firstImageDoc = await Image.findOne({ vehicle_id: vehicle._id }).select('imageUrl').lean();
+            const firstImageUrl = firstImageDoc ? firstImageDoc.imageUrl : null;
+
+            const vehicleObject = vehicle.toJSON();
+            // The images array is not populated, so no need to delete it. It won't be there.
+            return { ...vehicleObject, firstImageUrl };
+        }));
+
         const totalVehicles = await Vehicle.countDocuments(filter);
 
         res.status(200).json({
-            vehicles: filteredVehicles,
+            vehicles: vehiclesWithFirstImage,
             currentPage: page,
             totalPages: Math.ceil(totalVehicles / limit),
             totalVehicles,
@@ -1005,13 +1074,16 @@ export const deleteVehicle = async (req: Request, res: Response) => {
 export const getVehicleById = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const vehicle = await Vehicle.findById(id);
+        const vehicle = await Vehicle.findById(id).populate({ path: 'images', select: 'imageUrl' });
 
         if (!vehicle) {
             return res.status(404).json({ message: 'Vehicle not found' });
         }
 
-        res.status(200).json(vehicle);
+        const vehicleObject = vehicle.toJSON();
+        delete vehicleObject.images; // Remove the images array
+
+        res.status(200).json(vehicleObject);
     } catch (err: any) {
         console.error(err);
         res.status(500).json({ message: 'Error fetching vehicle', error: err.message });
