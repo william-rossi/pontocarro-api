@@ -7,6 +7,7 @@ import {
     deleteVehicle,
     getVehiclesByCityAndState,
     getVehicleById,
+    getUserVehicles,
 } from '../controllers/vehicleController';
 import { uploadImages, deleteImage } from '../controllers/imageController';
 import { authenticateUser } from '../middleware/authMiddleware';
@@ -21,6 +22,7 @@ router.get('/by-city-state', getVehiclesByCityAndState);
 router.get('/:id', getVehicleById); // <--- Nova rota para obter veículo por ID
 
 // Authenticated routes
+router.get('/:id/my-vehicles', authenticateUser, getUserVehicles); // New route to get vehicles for the logged-in user
 router.post('/', authenticateUser, express.json(), addVehicle);
 router.put('/:id', authenticateUser, express.json(), updateVehicle);
 router.delete('/:id', authenticateUser, deleteVehicle);

@@ -22,8 +22,8 @@ export const createUserSchema = z
         phone: z
             .string()
             .min(1, "Campo obrigatório")
-            .min(14, "Telefone inválido (mínimo 14 caracteres)")
-            .max(15, "Telefone inválido (máximo 15 caracteres)"),
+            .min(10, "Telefone inválido (mínimo 10 caracteres)")
+            .max(11, "Telefone inválido (máximo 11 caracteres)"),
         state: z.string().min(1, "Campo obrigatório"),
         city: z.string().min(1, "Campo obrigatório")
     })

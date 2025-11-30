@@ -19,5 +19,5 @@ export const vehicleSchema = z.object({
     images: z.array(z.string()).max(10, "Máximo de 10 fotos").optional(),
     announcerName: z.string().min(3, "Nome do anunciante deve ter no mínimo 3 caracteres").max(100, "Nome do anunciante muito longo"),
     announcerEmail: z.string().min(1, "E-mail do anunciante é obrigatório").max(150, "E-mail do anunciante muito longo").email("E-mail do anunciante inválido"),
-    announcerPhone: z.string().min(1, "Telefone do anunciante é obrigatório").min(14, "Telefone do anunciante inválido (mínimo 14 caracteres)").max(15, "Telefone do anunciante inválido (máximo 15 caracteres)"),
+    announcerPhone: z.string().min(1, "Telefone do anunciante é obrigatório").min(10, "Telefone do anunciante inválido (mínimo 10 caracteres)").max(11, "Telefone do anunciante inválido (máximo 11 caracteres)"),
 });

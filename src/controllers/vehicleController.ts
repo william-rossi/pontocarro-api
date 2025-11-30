@@ -5,6 +5,12 @@ import { z } from 'zod'; // Import zod for validation errors
 import fs from 'fs';
 import path from 'path';
 import Image from '../models/Image'; // Import the Image model
+import mongoose from 'mongoose'; // Import mongoose
+
+// Helper function to strip accents from a string
+const stripAccents = (str: string): string => {
+    return str.normalize("NFD").replace(/\p{Diacritic}/gu, "");
+};
 
 /**
  * @swagger
@@ -107,6 +113,139 @@ export const getAllVehicles = async (req: Request, res: Response) => {
     } catch (err: any) {
         console.error(err);
         res.status(500).json({ message: 'Server error', error: err.message });
+    }
+};
+
+/**
+ * @swagger
+ * /vehicles/{id}/my-vehicles:
+ *   get:
+ *     summary: Get all vehicles owned by a specific user with pagination
+ *     tags: [Vehicles]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: User ID to retrieve vehicles for
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: "Page number (default: 1)"
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: "Items per page (default: 10)"
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: ['createdAt', 'price', 'year', 'mileage']
+ *         description: "Sort by field (default: 'createdAt')"
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: ['asc', 'desc']
+ *         description: "Sort order (default: 'desc' for createdAt, 'asc' for others)"
+ *     responses:
+ *       200:
+ *         description: List of vehicles owned by the user with pagination information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 vehicles:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Vehicle'
+ *                 currentPage:
+ *                   type: integer
+ *                   example: 1
+ *                 totalPages:
+ *                   type: integer
+ *                   example: 5
+ *                 totalVehicles:
+ *                   type: integer
+ *                   example: 42
+ *                 firstImageUrl:
+ *                   type: string
+ *                   example: /uploads/vehicles/some_image.jpg
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+export const getUserVehicles = async (req: Request, res: Response) => {
+    try {
+        if (!req.userId) {
+            return res.status(401).json({ message: 'Unauthorized: User ID not found' });
+        }
+
+        const { id } = req.params; // Get user ID from URL parameters
+
+        if (id !== req.userId) {
+            return res.status(403).json({ message: 'Forbidden: You can only view your own vehicles.' });
+        }
+
+        const page = parseInt(req.query.page as string) || 1; // Default to page 1
+        const limit = parseInt(req.query.limit as string) || 10; // Default to 10 items per page
+        const sortBy = req.query.sortBy as string || 'createdAt'; // Default sort by 'createdAt'
+        const sortOrder = req.query.sortOrder as string || (sortBy === 'createdAt' ? 'desc' : 'asc'); // Default 'desc' for createdAt, 'asc' for others
+
+        const skip = (page - 1) * limit;
+
+        const sort: { [key: string]: 1 | -1 } = {};
+        sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+        const vehicles = await Vehicle.find({ owner_id: req.userId })
+            .select('-description -features -images') // Exclude description, features, and images
+            .sort(sort)
+            .skip(skip)
+            .limit(limit);
+
+        const totalVehicles = await Vehicle.countDocuments({ owner_id: req.userId }); // Get total count for pagination
+        const totalPages = Math.ceil(totalVehicles / limit);
+
+        // Attach firstImageUrl to each vehicle
+        const vehiclesWithFirstImage = await Promise.all(vehicles.map(async (vehicle: any) => {
+            const firstImage = await Image.findOne({ vehicle_id: vehicle._id }).select('imageUrl').lean();
+            // Ensure it's a plain object by spreading _doc if it exists, otherwise spread the vehicle itself
+            const plainVehicle = vehicle._doc ? { ...vehicle._doc } : { ...vehicle };
+            return { ...plainVehicle, firstImageUrl: firstImage ? firstImage.imageUrl : null };
+        }));
+
+        res.status(200).json({
+            vehicles: vehiclesWithFirstImage,
+            currentPage: page,
+            totalPages: totalPages,
+            totalVehicles: totalVehicles,
+        });
+    } catch (error) {
+        console.error('Error fetching user vehicles:', error);
+        res.status(500).json({ message: 'Internal server error.' });
     }
 };
 
@@ -257,7 +396,8 @@ export const searchVehicles = async (req: Request, res: Response) => {
     if (name) {
         const keywords = (name as string).split(' ').filter(Boolean); // Split by space and remove empty strings
         const keywordFilters = keywords.map(keyword => {
-            const searchRegex = new RegExp(keyword, 'i');
+            const strippedKeyword = stripAccents(keyword); // Strip accents from the keyword
+            const searchRegex = new RegExp(strippedKeyword, 'i');
             const yearSearch = parseInt(keyword);
             return {
                 $or: [
@@ -274,13 +414,13 @@ export const searchVehicles = async (req: Request, res: Response) => {
         filter.$and = [...(filter.$and || []), ...keywordFilters];
     }
     if (brand) {
-        filter.brand = { $regex: new RegExp(brand as string, 'i') };
+        filter.brand = { $regex: new RegExp(stripAccents(brand as string), 'i') }; // Apply stripAccents to brand filter
     }
     if (vehicleModel) {
-        filter.vehicleModel = { $regex: new RegExp(vehicleModel as string, 'i') };
+        filter.vehicleModel = { $regex: new RegExp(stripAccents(vehicleModel as string), 'i') }; // Apply stripAccents to vehicleModel filter
     }
     if (engine) {
-        filter.engine = { $regex: new RegExp(engine as string, 'i') };
+        filter.engine = { $regex: new RegExp(stripAccents(engine as string), 'i') }; // Apply stripAccents to engine filter
     }
 
     // Validação para campos numéricos
@@ -315,7 +455,7 @@ export const searchVehicles = async (req: Request, res: Response) => {
         filter.bodyType = { $regex: new RegExp(bodyType as string, 'i') };
     }
     if (color) {
-        filter.color = { $regex: new RegExp(color as string, 'i') };
+        filter.color = { $regex: new RegExp(stripAccents(color as string), 'i') }; // Apply stripAccents to color filter
     }
 
     const parsedMinMileage = parseInt(minMileage as string);
@@ -579,7 +719,7 @@ export const addVehicle = async (req: Request, res: Response) => {
         const { title, brand, vehicleModel, engine, year, price, mileage, state, city, fuel, transmission, bodyType, color, description, features, announcerName, announcerEmail, announcerPhone } = validatedData;
 
         const newVehicle = new Vehicle({
-            owner_id: req.userId, // Obtained from authentication middleware
+            owner_id: req.userId, // Reverted to use req.userId directly
             title,
             brand,
             vehicleModel,
@@ -774,6 +914,15 @@ export const updateVehicle = async (req: Request, res: Response) => {
 
         await vehicle.save();
 
+        // After saving, check if the vehicle has any images.
+        // If not, and it's an update scenario, we should prevent it or return an error.
+        const currentImagesCount = await Image.countDocuments({ vehicle_id: vehicle._id });
+        if (currentImagesCount === 0) {
+            // Optionally, you might want to revert the vehicle.save() here if this is a critical requirement.
+            // For now, we'll just return an error and expect the frontend to handle image uploads separately.
+            return res.status(400).json({ message: 'A vehicle must have at least one image.' });
+        }
+
         res.status(200).json({ message: 'Vehicle updated successfully', vehicle });
     } catch (err: any) {
         if (err instanceof z.ZodError) {
@@ -895,7 +1044,7 @@ export const uploadImages = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /vehicles/{id}/images/{imageName}:
+ * /vehicles/{id}/images/{imageId}:
  *   delete:
  *     summary: Delete a vehicle image
  *     tags: [Vehicles]
@@ -909,11 +1058,11 @@ export const uploadImages = async (req: Request, res: Response) => {
  *         required: true
  *         description: Vehicle ID
  *       - in: path
- *         name: imageName
+ *         name: imageId
  *         schema:
  *           type: string
  *         required: true
- *         description: Name of the image file to delete
+ *         description: ID of the image to delete
  *     responses:
  *       200:
  *         description: Image deleted successfully
@@ -1025,16 +1174,41 @@ export const deleteVehicle = async (req: Request, res: Response) => {
     const ownerId = req.userId; // Use req.userId as set by auth middleware
 
     try {
+        // Find the vehicle to ensure it exists and belongs to the user
+        const vehicleToDelete = await Vehicle.findOne({ _id: id, owner_id: ownerId });
+
+        if (!vehicleToDelete) {
+            return res.status(404).json({ message: 'Vehicle not found or you do not have permission to delete this vehicle' });
+        }
+
+        // 1. Find all images associated with the vehicle
+        const imagesToDelete = await Image.find({ vehicle_id: id });
+
+        // 2. For each associated image, delete the physical file from the filesystem
+        for (const image of imagesToDelete) {
+            const filePath = path.join(__dirname, '../../uploads/vehicles', path.basename(image.imageUrl));
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            } else {
+                console.warn(`File not found on filesystem but present in DB: ${filePath}`);
+            }
+        }
+
+        // 3. Delete the image records from the Image collection in the database
+        await Image.deleteMany({ vehicle_id: id });
+
+        // 4. Delete the vehicle record from the Vehicle collection in the database
         const result = await Vehicle.deleteOne({ _id: id, owner_id: ownerId });
 
         if (result.deletedCount === 0) {
+            // This case should ideally not be reached if vehicleToDelete was found, but for safety
             return res.status(404).json({ message: 'Vehicle not found or you do not have permission to delete this vehicle' });
         }
 
         res.status(200).json({ message: 'Vehicle deleted successfully' });
-    } catch (err) {
+    } catch (err: any) {
         console.error(err);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Server error', error: err.message });
     }
 };
 

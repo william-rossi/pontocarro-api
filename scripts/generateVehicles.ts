@@ -95,83 +95,140 @@ const generateVehicles = async () => {
             console.warn('No images found in uploads/vehicles. Vehicles will be created without images.');
         }
 
-        for (const stateInfo of statesAndCities) {
-            for (let i = 0; i < 2; i++) { // Two vehicles per state, will interleave supercars
-                const isSupercar = faker.datatype.boolean(); // Randomly decide if it's a supercar
-                let randomBrand: string;
-                let randomModel: string;
+        // Define a fixed owner_id for generated vehicles or fetch an existing one
+        const fixedOwnerId = new mongoose.Types.ObjectId('69224a9650d68da93bc04c1f'); // Replace with a valid user ID from your DB
+        // Or, to fetch an existing user:
+        // const existingUser = await User.findOne({}); // Find any existing user
+        // const ownerId = existingUser ? existingUser._id : new mongoose.Types.ObjectId();
 
-                if (isSupercar) {
-                    const supercarBrands = ['Ferrari', 'Lamborghini', 'Porsche', 'McLaren'];
-                    randomBrand = faker.helpers.arrayElement(supercarBrands);
-                    randomModel = faker.helpers.arrayElement(models[randomBrand as keyof typeof models] || ['Generic Supercar']);
-                } else {
-                    const regularBrands = brands.filter(brand => !['Ferrari', 'Lamborghini', 'Porsche', 'McLaren'].includes(brand));
-                    randomBrand = faker.helpers.arrayElement(regularBrands);
-                    randomModel = faker.helpers.arrayElement(models[randomBrand as keyof typeof models] || ['Generic Model']);
-                }
+        interface ParsedVehicleImage {
+            filePath: string;
+            brand?: string;
+            model?: string;
+            year?: number;
+        }
 
-                const randomCity = faker.helpers.arrayElement(stateInfo.cities);
-                const randomFuel = faker.helpers.arrayElement(fuels);
-                const randomTransmission = faker.helpers.arrayElement(transmissions);
-                const randomBodyType = faker.helpers.arrayElement(bodyTypes);
-                const randomColor = faker.helpers.arrayElement(colors);
-                const randomFeatures = faker.helpers.arrayElements(features, { min: 5, max: features.length });
+        const parseVehicleNameFromFilename = (filename: string): { brand?: string, model?: string, year?: number } => {
+            const result: { brand?: string, model?: string, year?: number } = {};
+            const lowerFilename = filename.toLowerCase();
 
-                // Ensure at least 3 unique images are selected
-                const selectedImages = new Set<string>();
-                while (selectedImages.size < 3 && availableImagePaths.length > 0) {
-                    selectedImages.add(faker.helpers.arrayElement(availableImagePaths));
-                }
-                const finalImages = Array.from(selectedImages);
-
-                const vehicleId = new mongoose.Types.ObjectId().toString();
-                const imageDocIds: string[] = [];
-
-                for (const imageUrlPath of finalImages) {
-                    const newImage = new Image({
-                        vehicle_id: vehicleId,
-                        imageUrl: imageUrlPath,
-                    });
-                    await newImage.save();
-                    imageDocIds.push(newImage._id);
-                }
-
-                const engine = faker.helpers.arrayElement(engines);
-                const year = faker.number.int({ min: isSupercar ? 2000 : 1990, max: new Date().getFullYear() + 1 });
-                const price = faker.number.float({ min: isSupercar ? 500000 : 15000, max: isSupercar ? 3000000 : 200000, fractionDigits: 2 });
-                const mileage = faker.number.int({ min: 0, max: isSupercar ? 50000 : 200000 });
-
-                const description = `Este ${year} ${randomBrand} ${randomModel} está em excelente condição. Possui um motor ${engine}, transmissão ${randomTransmission} e é movido a ${randomFuel}. Com apenas ${mileage.toLocaleString('pt-BR')} km rodados, este veículo ${randomBodyType} na cor ${randomColor} oferece os seguintes recursos: ${randomFeatures.join(', ')}. Uma oportunidade imperdível!`;
-
-                const vehicleData = {
-                    _id: vehicleId,
-                    owner_id: new mongoose.Types.ObjectId(),
-                    title: `${year} ${randomBrand} ${randomModel} ${engine}`,
-                    brand: randomBrand,
-                    vehicleModel: randomModel,
-                    engine: engine,
-                    year: year,
-                    price: price,
-                    mileage: mileage,
-                    state: stateInfo.state,
-                    city: randomCity,
-                    fuel: randomFuel,
-                    transmission: randomTransmission,
-                    bodyType: randomBodyType,
-                    color: randomColor,
-                    description: description,
-                    features: randomFeatures,
-                    images: imageDocIds,
-                    announcerName: faker.person.fullName(),
-                    announcerEmail: faker.internet.email(),
-                    announcerPhone: faker.helpers.replaceSymbols('+55 (##) #####-####'),
-                };
-
-                const newVehicle = new Vehicle(vehicleData);
-                await newVehicle.save();
-                console.log(`Created vehicle: ${newVehicle.title} in ${newVehicle.city}, ${newVehicle.state}`);
+            // Try to extract year (e.g., 1966-ford-mustang)
+            const yearMatch = filename.match(/(\d{4})-/);
+            if (yearMatch && yearMatch[1]) {
+                result.year = parseInt(yearMatch[1], 10);
             }
+
+            // Try to extract brand and model from common patterns (e.g., TOYOTA_COROLLA, nissan-kicks)
+            for (const brand of brands) {
+                const lowerBrand = brand.toLowerCase();
+                if (lowerFilename.includes(lowerBrand)) {
+                    result.brand = brand;
+                    const modelsForBrand = models[brand as keyof typeof models];
+                    if (modelsForBrand) {
+                        for (const model of modelsForBrand) {
+                            const lowerModel = model.toLowerCase().replace(/\s/g, '-'); // replace spaces for comparison
+                            if (lowerFilename.includes(lowerModel)) {
+                                result.model = model;
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+            return result;
+        };
+
+        const groupedVehicleImages: { [key: string]: ParsedVehicleImage[] } = {};
+        const allParsedImages: ParsedVehicleImage[] = [];
+
+        for (const file of imageFiles) {
+            const filePath = `/uploads/vehicles/${file}`;
+            const { brand, model, year } = parseVehicleNameFromFilename(file);
+            const parsedImage: ParsedVehicleImage = { filePath, brand, model, year };
+            allParsedImages.push(parsedImage);
+
+            if (brand && model) {
+                const key = `${brand}-${model}${year ? `-${year}` : ''}`;
+                if (!groupedVehicleImages[key]) {
+                    groupedVehicleImages[key] = [];
+                }
+                groupedVehicleImages[key].push(parsedImage);
+            }
+        }
+
+        // Clear existing vehicles and images to avoid duplicates on re-run
+        await Vehicle.deleteMany({});
+        await Image.deleteMany({});
+        console.log('Cleared existing vehicles and images.');
+
+        const supercarBrands = ['Ferrari', 'Lamborghini', 'Porsche', 'McLaren'];
+
+        // Iterate through grouped images to create unique vehicle entries
+        for (const key in groupedVehicleImages) {
+            const imagesForVehicle = groupedVehicleImages[key];
+            const firstImageParsed = imagesForVehicle[0];
+
+            const vehicleBrand = firstImageParsed.brand || faker.helpers.arrayElement(brands);
+            const vehicleModel = firstImageParsed.model || faker.helpers.arrayElement(models[vehicleBrand as keyof typeof models] || ['Generic Model']);
+            const vehicleYear = firstImageParsed.year || faker.number.int({ min: 1990, max: new Date().getFullYear() + 1 });
+
+            const isSupercar = supercarBrands.includes(vehicleBrand); // Determine if it's a supercar
+
+            const randomStateInfo = faker.helpers.arrayElement(statesAndCities);
+            const randomCity = faker.helpers.arrayElement(randomStateInfo.cities);
+            const randomFuel = faker.helpers.arrayElement(fuels);
+            const randomTransmission = faker.helpers.arrayElement(transmissions);
+            const randomBodyType = faker.helpers.arrayElement(bodyTypes);
+            const randomColor = faker.helpers.arrayElement(colors);
+            const randomFeatures = faker.helpers.arrayElements(features, { min: 5, max: features.length });
+
+            const vehicleId = new mongoose.Types.ObjectId().toString();
+            const imageDocIds: string[] = [];
+
+            for (const imageUrlPath of imagesForVehicle.map(img => img.filePath)) {
+                const newImage = new Image({
+                    vehicle_id: vehicleId,
+                    imageUrl: imageUrlPath,
+                });
+                await newImage.save();
+                imageDocIds.push(newImage._id);
+            }
+
+            const engine = faker.helpers.arrayElement(engines);
+            const year = faker.number.int({ min: isSupercar ? 2000 : 1990, max: new Date().getFullYear() + 1 });
+            const price = faker.number.float({ min: isSupercar ? 500000 : 15000, max: isSupercar ? 3000000 : 200000, fractionDigits: 2 });
+            const mileage = faker.number.int({ min: 0, max: isSupercar ? 50000 : 200000 });
+
+            const description = `Este ${year} ${vehicleBrand} ${vehicleModel} está em excelente condição. Possui um motor ${engine}, transmissão ${randomTransmission} e é movido a ${randomFuel}. Com apenas ${mileage.toLocaleString('pt-BR')} km rodados, este veículo ${randomBodyType} na cor ${randomColor} oferece os seguintes recursos: ${randomFeatures.join(', ')}. Uma oportunidade imperdível!`;
+
+            const vehicleData = {
+                _id: vehicleId,
+                owner_id: fixedOwnerId,
+                title: `${year} ${vehicleBrand} ${vehicleModel} ${engine}`,
+                brand: vehicleBrand,
+                vehicleModel: vehicleModel,
+                engine: engine,
+                year: year,
+                price: price,
+                mileage: mileage,
+                state: randomStateInfo.state,
+                city: randomCity,
+                fuel: randomFuel,
+                transmission: randomTransmission,
+                bodyType: randomBodyType,
+                color: randomColor,
+                description: description,
+                features: randomFeatures,
+                images: imageDocIds,
+                announcerName: faker.person.fullName(),
+                announcerEmail: faker.internet.email(),
+                announcerPhone: faker.helpers.replaceSymbols('(##) #####-####'),
+            };
+
+            const newVehicle = new Vehicle(vehicleData);
+            await newVehicle.save();
+            console.log(`Created vehicle: ${newVehicle.title} with images: ${imageDocIds.length}`);
         }
 
         console.log('Mock vehicle generation complete!');

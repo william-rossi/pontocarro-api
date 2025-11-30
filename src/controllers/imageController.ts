@@ -252,3 +252,57 @@ export const deleteImage = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Error deleting image', error: err.message });
     }
 };
+
+/**
+ * @swagger
+ * /vehicles/{id}/images/{imageId}:
+ *   delete:
+ *     summary: Delete a vehicle image
+ *     tags: [Vehicles]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Vehicle ID
+ *       - in: path
+ *         name: imageId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the image to delete
+ *     responses:
+ *       200:
+ *         description: Image deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Image deleted successfully
+ *       404:
+ *         description: Not Found/Permission Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Vehicle not found or you do not have permission to delete images for this vehicle
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Server Error
+ */
