@@ -78,8 +78,13 @@ export const getAllVehicles = async (req: Request, res: Response) => {
     try {
         const page = parseInt(req.query.page as string) || 1; // Default to page 1
         const limit = parseInt(req.query.limit as string) || 10; // Default to 10 items per page
-        const sortBy = req.query.sortBy as string || 'createdAt'; // Default sort by 'createdAt'
-        const sortOrder = req.query.sortOrder as string || (sortBy === 'createdAt' ? 'desc' : 'asc'); // Default 'desc' for createdAt, 'asc' for others
+        let sortBy = req.query.sortBy as string || 'created_at'; // Default sort by 'created_at'
+        const sortOrder = req.query.sortOrder as string || (sortBy === 'created_at' ? 'desc' : 'asc'); // Default 'desc' for created_at, 'asc' for others
+
+        // Map 'createdAt' to 'created_at' for database query
+        if (sortBy === 'createdAt') {
+            sortBy = 'created_at';
+        }
 
         const skip = (page - 1) * limit;
 
@@ -212,8 +217,14 @@ export const getUserVehicles = async (req: Request, res: Response) => {
 
         const page = parseInt(req.query.page as string) || 1; // Default to page 1
         const limit = parseInt(req.query.limit as string) || 10; // Default to 10 items per page
-        const sortBy = req.query.sortBy as string || 'createdAt'; // Default sort by 'createdAt'
-        const sortOrder = req.query.sortOrder as string || (sortBy === 'createdAt' ? 'desc' : 'asc'); // Default 'desc' for createdAt, 'asc' for others
+        let sortBy = req.query.sortBy as string || 'created_at'; // Default sort by 'created_at'
+
+        // Normalize sortBy to 'created_at' if it comes as 'createdAt'
+        if (sortBy === 'createdAt') {
+            sortBy = 'created_at';
+        }
+
+        const sortOrder = req.query.sortOrder as string || (sortBy === 'created_at' ? 'desc' : 'asc'); // Default 'desc' for created_at, 'asc' for others
 
         const skip = (page - 1) * limit;
 
@@ -389,6 +400,8 @@ export const searchVehicles = async (req: Request, res: Response) => {
 
     const page = parseInt(req.query.page as string) || 1; // Default to page 1
     const limit = parseInt(req.query.limit as string) || 10; // Default to 10 items per page
+    const sortBy = req.query.sortBy as string || 'created_at'; // Default sort by 'created_at'
+    const sortOrder = req.query.sortOrder as string || (sortBy === 'created_at' ? 'desc' : 'asc'); // Default 'desc' for created_at, 'asc' for others
     const skip = (page - 1) * limit;
 
     let filter: any = {};
@@ -478,9 +491,13 @@ export const searchVehicles = async (req: Request, res: Response) => {
         filter.year = { ...filter.year, $lte: parsedMaxYear };
     }
 
+    const sort: { [key: string]: 1 | -1 } = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
     try {
         const filteredVehicles = await Vehicle.find(filter)
             .select('-description -features -images') // Exclude description and features
+            .sort(sort)
             .skip(skip)
             .limit(limit);
 

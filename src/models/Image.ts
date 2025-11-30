@@ -2,7 +2,6 @@ import { Schema, model, Document } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface Image extends Document {
-    _id: string;
     vehicle_id: string; // Reference to the Vehicle model
     imageUrl: string;
     created_at?: Date;

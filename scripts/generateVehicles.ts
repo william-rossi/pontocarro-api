@@ -10,7 +10,7 @@ import Image from '../src/models/Image'; // Import the Image model
 dotenv.config();
 
 const statesAndCities = [
-    { state: 'SP', cities: ['São Paulo', 'Campinas', 'Ribeirão Preto', 'Santos'] },
+    { state: 'SP', cities: ['São Paulo', 'Campinas', 'São José do Rio Preto', 'Santos'] },
     { state: 'RJ', cities: ['Rio de Janeiro', 'Niterói', 'Duque de Caxias', 'Campos dos Goytacazes'] },
     { state: 'MG', cities: ['Belo Horizonte', 'Uberlândia', 'Contagem', 'Juiz de Fora'] },
     { state: 'RS', cities: ['Porto Alegre', 'Caxias do Sul', 'Florianópolis', 'Curitiba'] },
@@ -165,70 +165,72 @@ const generateVehicles = async () => {
         const supercarBrands = ['Ferrari', 'Lamborghini', 'Porsche', 'McLaren'];
 
         // Iterate through grouped images to create unique vehicle entries
-        for (const key in groupedVehicleImages) {
-            const imagesForVehicle = groupedVehicleImages[key];
-            const firstImageParsed = imagesForVehicle[0];
+        for (const stateInfo of statesAndCities) {
+            for (const city of stateInfo.cities) {
 
-            const vehicleBrand = firstImageParsed.brand || faker.helpers.arrayElement(brands);
-            const vehicleModel = firstImageParsed.model || faker.helpers.arrayElement(models[vehicleBrand as keyof typeof models] || ['Generic Model']);
-            const vehicleYear = firstImageParsed.year || faker.number.int({ min: 1990, max: new Date().getFullYear() + 1 });
+                const vehicleBrand = faker.helpers.arrayElement(brands);
+                const vehicleModel = faker.helpers.arrayElement(models[vehicleBrand as keyof typeof models] || ['Generic Model']);
+                const vehicleYear = faker.number.int({ min: 1990, max: new Date().getFullYear() + 1 });
 
-            const isSupercar = supercarBrands.includes(vehicleBrand); // Determine if it's a supercar
+                const isSupercar = supercarBrands.includes(vehicleBrand); // Determine if it's a supercar
 
-            const randomStateInfo = faker.helpers.arrayElement(statesAndCities);
-            const randomCity = faker.helpers.arrayElement(randomStateInfo.cities);
-            const randomFuel = faker.helpers.arrayElement(fuels);
-            const randomTransmission = faker.helpers.arrayElement(transmissions);
-            const randomBodyType = faker.helpers.arrayElement(bodyTypes);
-            const randomColor = faker.helpers.arrayElement(colors);
-            const randomFeatures = faker.helpers.arrayElements(features, { min: 5, max: features.length });
+                const randomFuel = faker.helpers.arrayElement(fuels);
+                const randomTransmission = faker.helpers.arrayElement(transmissions);
+                const randomBodyType = faker.helpers.arrayElement(bodyTypes);
+                const randomColor = faker.helpers.arrayElement(colors);
+                const randomFeatures = faker.helpers.arrayElements(features, { min: 5, max: features.length });
 
-            const vehicleId = new mongoose.Types.ObjectId().toString();
-            const imageDocIds: string[] = [];
+                const vehicleId = new mongoose.Types.ObjectId().toString();
+                const imageDocIds: string[] = [];
 
-            for (const imageUrlPath of imagesForVehicle.map(img => img.filePath)) {
-                const newImage = new Image({
-                    vehicle_id: vehicleId,
-                    imageUrl: imageUrlPath,
-                });
-                await newImage.save();
-                imageDocIds.push(newImage._id);
+                // Assign images randomly from all available images
+                const numberOfImages = faker.number.int({ min: 1, max: 5 }); // Each vehicle gets 1 to 5 images
+                const selectedImages = faker.helpers.arrayElements(availableImagePaths, { min: numberOfImages, max: numberOfImages });
+
+                for (const imageUrlPath of selectedImages) {
+                    const newImage = new Image({
+                        vehicle_id: vehicleId,
+                        imageUrl: imageUrlPath,
+                    });
+                    await newImage.save();
+                    imageDocIds.push(newImage._id.toString());
+                }
+
+                const engine = faker.helpers.arrayElement(engines);
+                const year = faker.number.int({ min: isSupercar ? 2000 : 1990, max: new Date().getFullYear() + 1 });
+                const price = faker.number.float({ min: isSupercar ? 500000 : 15000, max: isSupercar ? 3000000 : 200000, fractionDigits: 2 });
+                const mileage = faker.number.int({ min: 0, max: isSupercar ? 50000 : 200000 });
+
+                const description = `Este ${year} ${vehicleBrand} ${vehicleModel} está em excelente condição. Possui um motor ${engine}, transmissão ${randomTransmission} e é movido a ${randomFuel}. Com apenas ${mileage.toLocaleString('pt-BR')} km rodados, este veículo ${randomBodyType} na cor ${randomColor} oferece os seguintes recursos: ${randomFeatures.join(', ')}. Uma oportunidade imperdível!`;
+
+                const vehicleData = {
+                    _id: vehicleId,
+                    owner_id: fixedOwnerId,
+                    title: `${vehicleBrand} ${vehicleModel} ${faker.helpers.arrayElement(['bem conservado', 'em ótimo estado', 'novo', 'apenas no pix'])}`,
+                    brand: vehicleBrand,
+                    vehicleModel: vehicleModel,
+                    engine: faker.helpers.arrayElement(['1.6', '2.0', '1.0 Turbo']),
+                    year: year,
+                    price: price,
+                    mileage: mileage,
+                    state: stateInfo.state,
+                    city: city,
+                    fuel: randomFuel,
+                    transmission: randomTransmission,
+                    bodyType: randomBodyType,
+                    color: randomColor,
+                    description: description,
+                    features: randomFeatures,
+                    images: imageDocIds,
+                    announcerName: faker.person.fullName(),
+                    announcerEmail: faker.internet.email(),
+                    announcerPhone: faker.helpers.replaceSymbols('###########'),
+                };
+
+                const newVehicle = new Vehicle(vehicleData);
+                await newVehicle.save();
+                console.log(`Created vehicle: ${newVehicle.title} in ${city}, ${stateInfo.state} with images: ${imageDocIds.length}`);
             }
-
-            const engine = faker.helpers.arrayElement(engines);
-            const year = faker.number.int({ min: isSupercar ? 2000 : 1990, max: new Date().getFullYear() + 1 });
-            const price = faker.number.float({ min: isSupercar ? 500000 : 15000, max: isSupercar ? 3000000 : 200000, fractionDigits: 2 });
-            const mileage = faker.number.int({ min: 0, max: isSupercar ? 50000 : 200000 });
-
-            const description = `Este ${year} ${vehicleBrand} ${vehicleModel} está em excelente condição. Possui um motor ${engine}, transmissão ${randomTransmission} e é movido a ${randomFuel}. Com apenas ${mileage.toLocaleString('pt-BR')} km rodados, este veículo ${randomBodyType} na cor ${randomColor} oferece os seguintes recursos: ${randomFeatures.join(', ')}. Uma oportunidade imperdível!`;
-
-            const vehicleData = {
-                _id: vehicleId,
-                owner_id: fixedOwnerId,
-                title: `${year} ${vehicleBrand} ${vehicleModel} ${engine}`,
-                brand: vehicleBrand,
-                vehicleModel: vehicleModel,
-                engine: engine,
-                year: year,
-                price: price,
-                mileage: mileage,
-                state: randomStateInfo.state,
-                city: randomCity,
-                fuel: randomFuel,
-                transmission: randomTransmission,
-                bodyType: randomBodyType,
-                color: randomColor,
-                description: description,
-                features: randomFeatures,
-                images: imageDocIds,
-                announcerName: faker.person.fullName(),
-                announcerEmail: faker.internet.email(),
-                announcerPhone: faker.helpers.replaceSymbols('(##) #####-####'),
-            };
-
-            const newVehicle = new Vehicle(vehicleData);
-            await newVehicle.save();
-            console.log(`Created vehicle: ${newVehicle.title} with images: ${imageDocIds.length}`);
         }
 
         console.log('Mock vehicle generation complete!');

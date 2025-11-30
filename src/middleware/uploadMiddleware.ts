@@ -22,4 +22,4 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
 };
 
 // Initialize Multer upload
-export const uploadVehicleImages = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } }).array('images', 10); // Max 10 images, 5MB each
+export const uploadVehicleImages = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024 } }).array('images', 10); // Max 10 images, 10MB each

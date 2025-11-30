@@ -1,8 +1,7 @@
-import { Schema, model, Document } from 'mongoose';
+import { Document, Schema, model } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid'; // Import uuid
 
 export interface Vehicle extends Document {
-    _id: string; // Define _id as string for GUID and make it required
     owner_id: Schema.Types.ObjectId;
     title: string;
     brand: string;

@@ -46,7 +46,7 @@ export const uploadImages = async (req: Request, res: Response) => {
             });
             const savedImage = await newImage.save();
             imageUrls.push(imageUrl);
-            imageIds.push(savedImage._id);
+            imageIds.push(savedImage._id.toString());
         }
 
         // Add new image IDs to the vehicle's images array
