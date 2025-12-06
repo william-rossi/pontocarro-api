@@ -1,15 +1,74 @@
 import { Request, Response } from 'express';
 import User from '../models/User'; // Import the Mongoose User model
 import Vehicle from '../models/Vehicle'; // Import the Mongoose Vehicle model
+import { createUserSchema } from '../schemas/userSchema';
+import bcrypt from 'bcryptjs';
 
+/**
+ * @api {put} /user/profile Update user profile
+ * @apiGroup User
+ * @apiHeader {String} Authorization Users unique access token
+ * @apiParam {String} [username] Username of the user
+ * @apiParam {String} [email] Email of the user
+ * @apiParam {String} [phone] Phone number of the user
+ * @apiParam {String} [state] State of the user
+ * @apiParam {String} [city] City of the user
+ * @apiSuccess {String} message Success message
+ * @apiSuccess {Object} user Updated user object
+ * @apiSuccessExample {json} Success-Response:
+ *     HTTP/1.1 200 OK
+ *     {
+ *       "message": "User profile updated successfully",
+ *       "user": {
+ *         "_id": "65bb7b1c3e3a3e3e3e3e3e3e",
+ *         "username": "updateduser",
+ *         "email": "updated@example.com",
+ *         "phone": "11987654321",
+ *         "state": "SP",
+ *         "city": "Sao Paulo"
+ *       }
+ *     }
+ * @apiError {String} message Error message
+ * @apiError {Array} [errors] Array of validation errors if validation fails
+ * @apiErrorExample {json} User Not Found Error-Response:
+ *     HTTP/1.1 404 Not Found
+ *     {
+ *       "message": "User not found"
+ *     }
+ * @apiErrorExample {json} Validation Error-Response:
+ *     HTTP/1.1 400 Bad Request
+ *     {
+ *       "message": "Validation error",
+ *       "errors": [
+ *         { "code": "invalid_string", "message": "Email inválido", "path": ["email"] }
+ *       ]
+ *     }
+ * @apiErrorExample {json} Unauthorized Error-Response:
+ *     HTTP/1.1 401 Unauthorized
+ *     {
+ *       "message": "No token, authorization denied"
+ *     }
+ * @apiErrorExample {json} Server Error-Response:
+ *     HTTP/1.1 500 Internal Server Error
+ *     {
+ *       "message": "Server error"
+ *     }
+ */
 export const updateUserProfile = async (req: Request, res: Response) => {
-    const { username, email } = req.body;
-    const userId = (req as any).user.id; // user._id is attached by authenticateUser middleware
+    const { id: userId } = req.params; // Get userId from URL parameters
 
     try {
+        // Validate request body against a partial user schema to allow partial updates
+        const validatedData = createUserSchema.partial().parse(req.body);
+
+        if (validatedData.password) {
+            const salt = await bcrypt.genSalt(10);
+            validatedData.password = await bcrypt.hash(validatedData.password, salt);
+        }
+
         const updatedUser = await User.findByIdAndUpdate(
             userId,
-            { $set: { username, email } },
+            { $set: validatedData },
             { new: true, runValidators: true }
         ).select('-password'); // Exclude password from the returned user object
 
@@ -18,7 +77,10 @@ export const updateUserProfile = async (req: Request, res: Response) => {
         }
 
         res.status(200).json({ message: 'User profile updated successfully', user: updatedUser });
-    } catch (err) {
+    } catch (err: any) {
+        if (err.name === 'ZodError') {
+            return res.status(400).json({ message: 'Validation error', errors: err.errors });
+        }
         console.error(err);
         res.status(500).json({ message: 'Server error' });
     }

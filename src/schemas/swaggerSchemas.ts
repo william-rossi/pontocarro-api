@@ -50,3 +50,109 @@
  *         message: { type: 'string', example: 'Server error' }
  *         error: { type: 'string', example: 'Detailed error message' }
  */
+
+/**
+ * @swagger
+ * paths:
+ *   /user/{id}/update:
+ *     put:
+ *       summary: Update user profile
+ *       description: Update the profile data for a specific user.
+ *       tags:
+ *         - User
+ *       parameters:
+ *         - in: path
+ *           name: id
+ *           required: true
+ *           description: ID of the user to update
+ *           schema:
+ *             type: string
+ *           example: 60f...
+ *       security:
+ *         - bearerAuth: []
+ *       requestBody:
+ *         required: true
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 username:
+ *                   type: string
+ *                   example: "João Silva"
+ *                 email:
+ *                   type: string
+ *                   format: email
+ *                   example: "joao.silva@example.com"
+ *                 phone:
+ *                   type: string
+ *                   example: "(11) 98765-4321"
+ *                 state:
+ *                   type: string
+ *                   example: "SP"
+ *                 city:
+ *                   type: string
+ *                   example: "São Paulo"
+ *                 password:
+ *                   type: string
+ *                   format: password
+ *                   example: "Senha@123"
+ *       responses:
+ *         200:
+ *           description: User profile updated successfully
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   message:
+ *                     type: string
+ *                     example: Usuário atualizado com sucesso
+ *                   refreshToken:
+ *                     type: string
+ *                     example: eyJhbGciOiJIUzI1Ni...
+ *         400:
+ *           description: Validation error
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   message:
+ *                     type: string
+ *                     example: Validation error
+ *                   errors:
+ *                     type: array
+ *                     items:
+ *                       type: object
+ *                       properties:
+ *                         code:
+ *                           type: string
+ *                           example: invalid_string
+ *                         message:
+ *                           type: string
+ *                           example: Email inválido
+ *                         path:
+ *                           type: array
+ *                           items:
+ *                             type: string
+ *                             example: email
+ *         401:
+ *           description: Unauthorized
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 $ref: '#/components/schemas/Error'
+ *         404:
+ *           description: User not found
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 $ref: '#/components/schemas/Error'
+ *         500:
+ *           description: Server error
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 $ref: '#/components/schemas/Error'
+ */
