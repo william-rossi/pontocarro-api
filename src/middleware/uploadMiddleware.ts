@@ -1,16 +1,8 @@
 import multer, { Multer } from 'multer';
-import path from 'path';
 import { Request } from 'express';
 
 // Configure storage for Multer
-const storage = multer.diskStorage({
-    destination: (req: Request, file: Express.Multer.File, cb) => {
-        cb(null, './uploads/vehicles'); // Save files to the 'uploads/vehicles' directory
-    },
-    filename: (req: Request, file: Express.Multer.File, cb) => {
-        cb(null, `${Date.now()}-${file.originalname}`); // Unique filename
-    },
-});
+const storage = multer.memoryStorage(); // Store files in memory as buffers
 
 // File filter to accept only images
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {

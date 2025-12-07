@@ -3,6 +3,8 @@ import Image from '../models/Image';
 import Vehicle from '../models/Vehicle';
 import path from 'path';
 import fs from 'fs';
+import sharp from 'sharp'; // Import sharp for image processing
+import { v4 as uuidv4 } from 'uuid'; // For generating unique filenames
 
 export const uploadImages = async (req: Request, res: Response) => {
     try {
@@ -25,13 +27,6 @@ export const uploadImages = async (req: Request, res: Response) => {
         // Check total images limit (existing + new)
         const existingImagesCount = await Image.countDocuments({ vehicle_id: vehicleId });
         if (existingImagesCount + newImageFiles.length > 10) {
-            // Clean up newly uploaded files if the limit is exceeded
-            newImageFiles.forEach(file => {
-                const filePath = path.join(__dirname, '../../uploads/vehicles', file.filename);
-                if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath);
-                }
-            });
             return res.status(400).json({ message: `Cannot upload more than 10 images. You already have ${existingImagesCount} images.` });
         }
 
@@ -39,7 +34,17 @@ export const uploadImages = async (req: Request, res: Response) => {
         const imageIds: string[] = [];
 
         for (const file of newImageFiles) {
-            const imageUrl = `/uploads/vehicles/${file.filename}`;
+            const uniqueFilename = `${uuidv4()}.webp`; // Use WebP for better compression
+            const outputPath = path.join(__dirname, '../../uploads/vehicles', uniqueFilename);
+
+            await sharp(file.buffer)
+                .resize(1920, undefined, { // Resize to max 1920px width, auto height
+                    withoutEnlargement: true // Don't enlarge images smaller than 1920px
+                })
+                .webp({ quality: 80 }) // Compress to WebP with 80% quality
+                .toFile(outputPath);
+
+            const imageUrl = `/uploads/vehicles/${uniqueFilename}`;
             const newImage = new Image({
                 vehicle_id: vehicleId,
                 imageUrl: imageUrl,
@@ -230,7 +235,8 @@ export const deleteImage = async (req: Request, res: Response) => {
         }
 
         // Delete the file from the filesystem
-        const filePath = path.join(__dirname, '../../uploads/vehicles', path.basename(imageToDelete.imageUrl));
+        const filename = path.basename(imageToDelete.imageUrl);
+        const filePath = path.join(__dirname, '../../uploads/vehicles', filename);
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
         } else {
