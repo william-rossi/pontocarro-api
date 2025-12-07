@@ -25,7 +25,7 @@ if (!fs.existsSync(uploadDir)) {
 app.use(cors({
     origin: [
         'http://localhost:3000',
-        'https://www.pontocarro.com'
+        'https://pontocarro.com'
     ]
 }));
 
