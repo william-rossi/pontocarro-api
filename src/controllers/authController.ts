@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto'; // Import crypto for generating tokens
-import transporter from '../config/email'; // Import Nodemailer transporter
-import User from '../models/User'; // Import the Mongoose User model
-import { z } from 'zod'; // Import zod for validation errors
-import { createUserSchema, forgotPasswordSchema } from '../schemas/userSchema'; // Import the user schema and forgotPasswordSchema
+import crypto from 'crypto'; // Importa crypto para gerar tokens
+import transporter from '../config/email'; // Importa o transportador do Nodemailer
+import User from '../models/User'; // Importa o modelo de Usuário do Mongoose
+import { z } from 'zod'; // Importa zod para erros de validação
+import { createUserSchema, forgotPasswordSchema } from '../schemas/userSchema'; // Importa o esquema de usuário e o esquema de forgotPassword
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
@@ -13,7 +13,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
  * @swagger
  * /auth/register:
  *   post:
- *     summary: Register a new user
+ *     summary: Registrar um novo usuário
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -29,38 +29,38 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
  *             properties:
  *               username:
  *                 type: string
- *                 description: User's full name
+ *                 description: Nome completo do usuário
  *                 example: João Silva
  *               email:
  *                 type: string
  *                 format: email
- *                 description: User's email
+ *                 description: E-mail do usuário
  *                 example: joao.silva@example.com
  *               password:
  *                 type: string
  *                 format: password
- *                 description: User's password (min 8 characters)
+ *                 description: Senha do usuário (mínimo 8 caracteres)
  *                 example: Senha@123
  *               confirmPassword:
  *                 type: string
  *                 format: password
- *                 description: Password confirmation
+ *                 description: Confirmação de senha
  *                 example: Senha@123
  *               phone:
  *                 type: string
- *                 description: User's phone number
+ *                 description: Número de telefone do usuário
  *                 example: '+55 (11) 98765-4321'
  *               city:
  *                 type: string
- *                 description: User's city
+ *                 description: Cidade do usuário
  *                 example: São Paulo
  *               state:
  *                 type: string
- *                 description: User's state
+ *                 description: Estado do usuário
  *                 example: SP
  *     responses:
  *       201:
- *         description: User registered successfully
+ *         description: Usuário registrado com sucesso
  *         content:
  *           application/json:
  *             schema:
@@ -79,7 +79,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
  *                   type: string
  *                   example: eyJhbGciOiJIUzI1Ni...
  *       400:
- *         description: Validation Error or User Exists
+ *         description: Erro de Validação ou Usuário Existente
  *         content:
  *           application/json:
  *             schema:
@@ -100,11 +100,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
  *                       message:
  *                         type: string
  *       500:
- *         description: Server Error
+ *         description: Erro do Servidor
  */
 export const registerUser = async (req: Request, res: Response) => {
     try {
-        // Validate request body with zod schema
+        // Valida o corpo da requisição com o esquema zod
         const validatedData = createUserSchema.parse(req.body);
 
         const { username, email, password, phone, city, state } = validatedData;
@@ -137,10 +137,10 @@ export const registerUser = async (req: Request, res: Response) => {
 
         const accessToken = jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: '1h' });
 
-        // Generate a JWT refresh token
-        const refreshToken = jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: '7d' }); // Refresh token valid for 7 days
+        // Gera um refresh token JWT
+        const refreshToken = jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: '7d' }); // Refresh token válido por 7 dias
 
-        newUser.refreshToken = refreshToken; // Store the JWT refresh token directly
+        newUser.refreshToken = refreshToken; // Armazena o refresh token JWT diretamente
         await newUser.save();
 
         res.status(201).json({ message: 'Usuário registrado com sucesso', accessToken, userId: newUser._id, refreshToken });
@@ -157,7 +157,7 @@ export const registerUser = async (req: Request, res: Response) => {
  * @swagger
  * /auth/login:
  *   post:
- *     summary: Authenticate a user
+ *     summary: Autenticar um usuário
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -172,16 +172,16 @@ export const registerUser = async (req: Request, res: Response) => {
  *               email:
  *                 type: string
  *                 format: email
- *                 description: User's email
+ *                 description: E-mail do usuário
  *                 example: joao.silva@example.com
  *               password:
  *                 type: string
  *                 format: password
- *                 description: User's password
+ *                 description: Senha do usuário
  *                 example: Senha@123
  *     responses:
  *       200:
- *         description: Successful login
+ *         description: Login bem-sucedido
  *         content:
  *           application/json:
  *             schema:
@@ -192,10 +192,10 @@ export const registerUser = async (req: Request, res: Response) => {
  *                   example: Login bem-sucedido
  *                 accessToken:
  *                   type: string
- *                   description: JWT for authentication
+ *                   description: JWT para autenticação
  *                 user:
  *                   type: object
- *                   description: Logged in user object (excluding password and refreshToken)
+ *                   description: Objeto de usuário logado (excluindo senha e refreshToken)
  *                   properties:
  *                     _id:
  *                       type: string
@@ -211,9 +211,9 @@ export const registerUser = async (req: Request, res: Response) => {
  *                       type: string
  *                 refreshToken:
  *                   type: string
- *                   description: Token to get new access tokens
+ *                   description: Token para obter novos access tokens
  *       400:
- *         description: Invalid credentials
+ *         description: Credenciais inválidas
  *         content:
  *           application/json:
  *             schema:
@@ -223,7 +223,7 @@ export const registerUser = async (req: Request, res: Response) => {
  *                   type: string
  *                   example: Credenciais inválidas
  *       500:
- *         description: Server Error
+ *         description: Erro do Servidor
  */
 export const loginUser = async (req: Request, res: Response) => {
     const { email, password } = req.body;
@@ -246,10 +246,10 @@ export const loginUser = async (req: Request, res: Response) => {
 
         const accessToken = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '1h' });
 
-        // Generate a new JWT refresh token for login
-        const newRefreshToken = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' }); // Refresh token valid for 7 days
+        // Gera um novo refresh token JWT para login
+        const newRefreshToken = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' }); // Refresh token válido por 7 dias
 
-        user.refreshToken = newRefreshToken; // Store the JWT refresh token directly
+        user.refreshToken = newRefreshToken; // Armazena o refresh token JWT diretamente
         await user.save();
 
         const userResponse = user.toObject();
@@ -316,10 +316,10 @@ export const forgotPassword = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Usuário não encontrado' });
         }
 
-        // Generate a reset token
+        // Gera um token de redefinição
         const resetToken = crypto.randomBytes(20).toString('hex');
         user.resetPasswordToken = resetToken;
-        user.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hour
+        user.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hora
         await user.save();
 
         const resetUrl = `${process.env.FRONTEND_DOMAIN}/redefinir-senha/${resetToken}`;
@@ -352,7 +352,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
  * @swagger
  * /auth/reset-password/{resetToken}:
  *   post:
- *     summary: Redefine a user's password
+ *     summary: Redefine a senha de um usuário
  *     tags: [Auth]
  *     parameters:
  *       - in: path
@@ -360,7 +360,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
  *         required: true
  *         schema:
  *           type: string
- *         description: Reset password token
+ *         description: Token de redefinição de senha
  *     requestBody:
  *       required: true
  *       content:
@@ -373,11 +373,11 @@ export const forgotPassword = async (req: Request, res: Response) => {
  *               password:
  *                 type: string
  *                 format: password
- *                 description: New password (min 8 characters)
+ *                 description: Nova senha (mínimo 8 caracteres)
  *                 example: NovaSenha@123
  *     responses:
  *       200:
- *         description: Password redefined successfully
+ *         description: Senha redefinida com sucesso
  *         content:
  *           application/json:
  *             schema:
@@ -387,7 +387,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
  *                   type: string
  *                   example: Senha redefinida com sucesso!
  *       400:
- *         description: Invalid request
+ *         description: Requisição inválida
  *         content:
  *           application/json:
  *             schema:
@@ -397,7 +397,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
  *                   type: string
  *                   example: Token inválido ou expirado
  *       500:
- *         description: Server Error
+ *         description: Erro do Servidor
  */
 export const resetPassword = async (req: Request, res: Response) => {
     const { resetToken } = req.params;
@@ -406,21 +406,21 @@ export const resetPassword = async (req: Request, res: Response) => {
     try {
         const user = await User.findOne({
             resetPasswordToken: resetToken,
-            resetPasswordExpires: { $gt: new Date() }, // Check if the token is not expired
+            resetPasswordExpires: { $gt: new Date() }, // Verifica se o token não expirou
         });
 
         if (!user) {
             return res.status(400).json({ message: 'Token de redefinição de senha inválido ou expirado.' });
         }
 
-        // Validate new password with zod schema (assuming createUserSchema is appropriate)
+        // Valida a nova senha com o esquema zod (assumindo que createUserSchema é apropriado)
         const passwordSchema = createUserSchema.pick({ password: true });
         passwordSchema.parse({ password });
 
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(password, salt);
-        user.resetPasswordToken = undefined; // Clear the reset token
-        user.resetPasswordExpires = undefined; // Clear the expiration time
+        user.resetPasswordToken = undefined; // Limpa o token de redefinição
+        user.resetPasswordExpires = undefined; // Limpa o tempo de expiração
         await user.save();
 
         res.status(200).json({ message: 'Senha redefinida com sucesso!' });
@@ -437,7 +437,7 @@ export const resetPassword = async (req: Request, res: Response) => {
  * @swagger
  * /auth/refresh-token:
  *   post:
- *     summary: Gera um novo access token usando um refresh token
+ *     summary: Gerar um novo access token usando um refresh token
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -487,7 +487,7 @@ export const refreshAccessToken = async (req: Request, res: Response) => {
     }
 
     try {
-        // Verify the refresh token as a JWT
+        // Verifica o refresh token como um JWT
         const decoded = jwt.verify(refreshToken, JWT_SECRET) as { id: string };
 
         const user = await User.findById(decoded.id);
@@ -496,10 +496,10 @@ export const refreshAccessToken = async (req: Request, res: Response) => {
             return res.status(401).json({ message: 'Refresh token inválido ou expirado' });
         }
 
-        // Generate a new access token
+        // Gera um novo access token
         const newAccessToken = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '1h' });
 
-        // Optionally, generate a new refresh token and update in DB for rotating refresh tokens
+        // Opcionalmente, gera um novo refresh token e atualiza no DB para rotação de refresh tokens
         const newRefreshToken = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' });
         user.refreshToken = newRefreshToken;
         await user.save();

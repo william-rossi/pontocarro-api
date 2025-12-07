@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import User from '../models/User'; // Import the Mongoose User model
+import User from '../models/User'; // Importa o modelo de Usuário do Mongoose
 
 interface AuthRequest extends Request {
     userId?: string;
@@ -16,13 +16,13 @@ export const authenticateUser = async (req: AuthRequest, res: Response, next: Ne
     }
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { id: string }; // id is now string for MongoDB _id
-        req.userId = decoded.id; // Attach user ID to request
+        const decoded = jwt.verify(token, JWT_SECRET) as { id: string }; // id agora é string para o _id do MongoDB
+        req.userId = decoded.id; // Anexa o ID do usuário à requisição
         const user = await User.findById(decoded.id);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-        // We don't need to attach the full user object if only the ID is used
+        // Não precisamos anexar o objeto de usuário completo se apenas o ID for usado
         // (req as any).user = user; 
         next();
 

@@ -3,7 +3,7 @@ import { registerUser, loginUser, forgotPassword, refreshAccessToken, resetPassw
 
 const router = Router();
 
-router.use(express.json()); // Apply JSON body parsing for auth routes
+router.use(express.json()); // Aplica o parsing do corpo JSON para as rotas de autenticação
 
 router.post('/register', registerUser);
 router.post('/login', loginUser);

@@ -1,13 +1,13 @@
 import { Request, Response } from 'express';
-import Vehicle from '../models/Vehicle'; // Import the Mongoose Vehicle model
-import { vehicleSchema } from '../schemas/vehicleSchema'; // Import vehicleSchema
-import { z } from 'zod'; // Import zod for validation errors
+import Vehicle from '../models/Vehicle'; // Importa o modelo de Veículo do Mongoose
+import { vehicleSchema } from '../schemas/vehicleSchema'; // Importa vehicleSchema
+import { z } from 'zod'; // Importa zod para erros de validação
 import fs from 'fs';
 import path from 'path';
-import Image from '../models/Image'; // Import the Image model
-import mongoose from 'mongoose'; // Import mongoose
+import Image from '../models/Image'; // Importa o modelo de Imagem
+import mongoose from 'mongoose'; // Importa mongoose
 
-// Helper function to strip accents from a string
+// Função auxiliar para remover acentos de uma string
 const stripAccents = (str: string): string => {
     return str.normalize("NFD").replace(/\p{Diacritic}/gu, "");
 };
@@ -16,7 +16,7 @@ const stripAccents = (str: string): string => {
  * @swagger
  * /vehicles:
  *   get:
- *     summary: Get all available vehicles with pagination
+ *     summary: Obtém todos os veículos disponíveis com paginação
  *     tags: [Vehicles]
  *     parameters:
  *       - in: query
@@ -24,28 +24,28 @@ const stripAccents = (str: string): string => {
  *         schema:
  *           type: integer
  *           minimum: 1
- *         description: "Page number (default: 1)"
+ *         description: "Número da página (padrão: 1)"
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           minimum: 1
- *         description: "Items per page (default: 10)"
+ *         description: "Itens por página (padrão: 10)"
  *       - in: query
  *         name: sortBy
  *         schema:
  *           type: string
  *           enum: ['createdAt', 'price', 'year', 'mileage']
- *         description: "Sort by field (default: 'createdAt')"
+ *         description: "Campo para ordenação (padrão: 'createdAt')"
  *       - in: query
  *         name: sortOrder
  *         schema:
  *           type: string
  *           enum: ['asc', 'desc']
- *         description: "Sort order (default: 'desc' for createdAt, 'asc' for others)"
+ *         description: "Ordem de ordenação (padrão: 'desc' para createdAt, 'asc' para outros)"
  *     responses:
  *       200:
- *         description: List of vehicles with pagination information
+ *         description: Lista de veículos com informações de paginação
  *         content:
  *           application/json:
  *             schema:
@@ -68,7 +68,7 @@ const stripAccents = (str: string): string => {
  *                   type: string
  *                   example: /uploads/vehicles/some_image.jpg
  *       500:
- *         description: Server error
+ *         description: Erro do servidor
  *         content:
  *           application/json:
  *             schema:
@@ -76,12 +76,12 @@ const stripAccents = (str: string): string => {
  */
 export const getAllVehicles = async (req: Request, res: Response) => {
     try {
-        const page = parseInt(req.query.page as string) || 1; // Default to page 1
-        const limit = parseInt(req.query.limit as string) || 10; // Default to 10 items per page
-        let sortBy = req.query.sortBy as string || 'created_at'; // Default sort by 'created_at'
-        const sortOrder = req.query.sortOrder as string || (sortBy === 'created_at' ? 'desc' : 'asc'); // Default 'desc' for created_at, 'asc' for others
+        const page = parseInt(req.query.page as string) || 1; // Padrão para página 1
+        const limit = parseInt(req.query.limit as string) || 10; // Padrão para 10 itens por página
+        let sortBy = req.query.sortBy as string || 'created_at'; // Padrão de ordenação por 'created_at'
+        const sortOrder = req.query.sortOrder as string || (sortBy === 'created_at' ? 'desc' : 'asc'); // Padrão 'desc' para created_at, 'asc' para outros
 
-        // Map 'createdAt' to 'created_at' for database query
+        // Mapeia 'createdAt' para 'created_at' para a consulta ao banco de dados
         if (sortBy === 'createdAt') {
             sortBy = 'created_at';
         }
@@ -92,22 +92,22 @@ export const getAllVehicles = async (req: Request, res: Response) => {
         sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
         const vehicles = await Vehicle.find()
-            .select('-description -features -images') // Exclude description and features
+            .select('-description -features -images') // Exclui descrição e features
             .sort(sort)
             .skip(skip)
             .limit(limit);
 
-        // Manually get image URLs for firstImageUrl without populating the whole array
+        // Obtém manualmente as URLs das imagens para firstImageUrl sem popular o array inteiro
         const vehiclesWithFirstImage = await Promise.all(vehicles.map(async (vehicle: any) => {
             const firstImageDoc = await Image.findOne({ vehicle_id: vehicle._id }).select('imageUrl').lean();
             const firstImageUrl = firstImageDoc ? firstImageDoc.imageUrl : null;
 
             const vehicleObject = vehicle.toJSON();
-            // The images array is not populated, so no need to delete it. It won't be there.
+            // O array de imagens não é populado, então não há necessidade de excluí-lo. Ele não estará lá.
             return { ...vehicleObject, firstImageUrl };
         }));
 
-        const totalVehicles = await Vehicle.countDocuments(); // Get total count for pagination
+        const totalVehicles = await Vehicle.countDocuments(); // Obtém a contagem total para paginação
 
         res.status(200).json({
             vehicles: vehiclesWithFirstImage,
@@ -117,7 +117,7 @@ export const getAllVehicles = async (req: Request, res: Response) => {
         });
     } catch (err: any) {
         console.error(err);
-        res.status(500).json({ message: 'Server error', error: err.message });
+        res.status(500).json({ message: 'Erro do servidor', error: err.message });
     }
 };
 
@@ -125,7 +125,7 @@ export const getAllVehicles = async (req: Request, res: Response) => {
  * @swagger
  * /vehicles/{id}/my-vehicles:
  *   get:
- *     summary: Get all vehicles owned by a specific user with pagination
+ *     summary: Obtém todos os veículos de um usuário específico com paginação
  *     tags: [Vehicles]
  *     security:
  *       - bearerAuth: []
@@ -135,34 +135,34 @@ export const getAllVehicles = async (req: Request, res: Response) => {
  *         schema:
  *           type: string
  *         required: true
- *         description: User ID to retrieve vehicles for
+ *         description: ID do usuário para o qual os veículos serão recuperados
  *       - in: query
  *         name: page
  *         schema:
  *           type: integer
  *           minimum: 1
- *         description: "Page number (default: 1)"
+ *         description: "Número da página (padrão: 1)"
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           minimum: 1
- *         description: "Items per page (default: 10)"
+ *         description: "Itens por página (padrão: 10)"
  *       - in: query
  *         name: sortBy
  *         schema:
  *           type: string
  *           enum: ['createdAt', 'price', 'year', 'mileage']
- *         description: "Sort by field (default: 'createdAt')"
+ *         description: "Campo para ordenação (padrão: 'createdAt')"
  *       - in: query
  *         name: sortOrder
  *         schema:
  *           type: string
  *           enum: ['asc', 'desc']
- *         description: "Sort order (default: 'desc' for createdAt, 'asc' for others)"
+ *         description: "Ordem de ordenação (padrão: 'desc' para createdAt, 'asc' para outros)"
  *     responses:
  *       200:
- *         description: List of vehicles owned by the user with pagination information
+ *         description: Lista de veículos de propriedade do usuário com informações de paginação
  *         content:
  *           application/json:
  *             schema:
@@ -185,19 +185,19 @@ export const getAllVehicles = async (req: Request, res: Response) => {
  *                   type: string
  *                   example: /uploads/vehicles/some_image.jpg
  *       401:
- *         description: Unauthorized
+ *         description: Não autorizado
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *       403:
- *         description: Forbidden
+ *         description: Proibido
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *       500:
- *         description: Server error
+ *         description: Erro do servidor
  *         content:
  *           application/json:
  *             schema:
@@ -206,25 +206,25 @@ export const getAllVehicles = async (req: Request, res: Response) => {
 export const getUserVehicles = async (req: Request, res: Response) => {
     try {
         if (!req.userId) {
-            return res.status(401).json({ message: 'Unauthorized: User ID not found' });
+            return res.status(401).json({ message: 'Não autorizado: ID do usuário não encontrado' });
         }
 
-        const { id } = req.params; // Get user ID from URL parameters
+        const { id } = req.params; // Obtém o ID do usuário dos parâmetros da URL
 
         if (id !== req.userId) {
-            return res.status(403).json({ message: 'Forbidden: You can only view your own vehicles.' });
+            return res.status(403).json({ message: 'Proibido: Você só pode visualizar seus próprios veículos.' });
         }
 
-        const page = parseInt(req.query.page as string) || 1; // Default to page 1
-        const limit = parseInt(req.query.limit as string) || 10; // Default to 10 items per page
-        let sortBy = req.query.sortBy as string || 'created_at'; // Default sort by 'created_at'
+        const page = parseInt(req.query.page as string) || 1; // Padrão para página 1
+        const limit = parseInt(req.query.limit as string) || 10; // Padrão para 10 itens por página
+        let sortBy = req.query.sortBy as string || 'created_at'; // Padrão de ordenação por 'created_at'
 
-        // Normalize sortBy to 'created_at' if it comes as 'createdAt'
+        // Normaliza sortBy para 'created_at' se vier como 'createdAt'
         if (sortBy === 'createdAt') {
             sortBy = 'created_at';
         }
 
-        const sortOrder = req.query.sortOrder as string || (sortBy === 'created_at' ? 'desc' : 'asc'); // Default 'desc' for created_at, 'asc' for others
+        const sortOrder = req.query.sortOrder as string || (sortBy === 'created_at' ? 'desc' : 'asc'); // Padrão 'desc' para created_at, 'asc' para outros
 
         const skip = (page - 1) * limit;
 
@@ -232,18 +232,18 @@ export const getUserVehicles = async (req: Request, res: Response) => {
         sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
         const vehicles = await Vehicle.find({ owner_id: req.userId })
-            .select('-description -features -images') // Exclude description, features, and images
+            .select('-description -features -images') // Exclui descrição, features e imagens
             .sort(sort)
             .skip(skip)
             .limit(limit);
 
-        const totalVehicles = await Vehicle.countDocuments({ owner_id: req.userId }); // Get total count for pagination
+        const totalVehicles = await Vehicle.countDocuments({ owner_id: req.userId }); // Obtém a contagem total para paginação
         const totalPages = Math.ceil(totalVehicles / limit);
 
-        // Attach firstImageUrl to each vehicle
+        // Anexa firstImageUrl a cada veículo
         const vehiclesWithFirstImage = await Promise.all(vehicles.map(async (vehicle: any) => {
             const firstImage = await Image.findOne({ vehicle_id: vehicle._id }).select('imageUrl').lean();
-            // Ensure it's a plain object by spreading _doc if it exists, otherwise spread the vehicle itself
+            // Garante que é um objeto simples, espalhando _doc se existir, caso contrário, espalha o próprio veículo
             const plainVehicle = vehicle._doc ? { ...vehicle._doc } : { ...vehicle };
             return { ...plainVehicle, firstImageUrl: firstImage ? firstImage.imageUrl : null };
         }));
@@ -255,8 +255,8 @@ export const getUserVehicles = async (req: Request, res: Response) => {
             totalVehicles: totalVehicles,
         });
     } catch (error) {
-        console.error('Error fetching user vehicles:', error);
-        res.status(500).json({ message: 'Internal server error.' });
+        console.error('Erro ao buscar veículos do usuário:', error);
+        res.status(500).json({ message: 'Erro interno do servidor.' });
     }
 };
 
@@ -264,109 +264,109 @@ export const getUserVehicles = async (req: Request, res: Response) => {
  * @swagger
  * /vehicles/search:
  *   get:
- *     summary: Search vehicles by multiple criteria with pagination
+ *     summary: Busca veículos por múltiplos critérios com paginação
  *     tags: [Vehicles]
  *     parameters:
  *       - in: query
  *         name: name
  *         schema:
  *           type: string
- *         description: Search term for title, brand, model, color, year, state, or city
+ *         description: Termo de busca para título, marca, modelo, cor, ano, estado ou cidade
  *       - in: query
  *         name: brand
  *         schema:
  *           type: string
- *         description: Vehicle brand
+ *         description: Marca do veículo
  *       - in: query
  *         name: vehicleModel
  *         schema:
  *           type: string
- *         description: Vehicle model
+ *         description: Modelo do veículo
  *       - in: query
  *         name: engine
  *         schema:
  *           type: string
- *         description: Vehicle engine
+ *         description: Motorização do veículo
  *       - in: query
  *         name: year
  *         schema:
  *           type: number
- *         description: Vehicle year
+ *         description: Ano do veículo
  *       - in: query
  *         name: minPrice
  *         schema:
  *           type: number
- *         description: Minimum price
+ *         description: Preço mínimo
  *       - in: query
  *         name: maxPrice
  *         schema:
  *           type: number
- *         description: Maximum price
+ *         description: Preço máximo
  *       - in: query
  *         name: minYear
  *         schema:
  *           type: number
- *         description: Minimum year
+ *         description: Ano mínimo
  *       - in: query
  *         name: maxYear
  *         schema:
  *           type: number
- *         description: Maximum year
+ *         description: Ano máximo
  *       - in: query
  *         name: state
  *         schema:
  *           type: string
- *         description: Vehicle state
+ *         description: Estado do veículo
  *       - in: query
  *         name: city
  *         schema:
  *           type: string
- *         description: Vehicle city
+ *         description: Cidade do veículo
  *       - in: query
  *         name: fuel
  *         schema:
  *           type: string
- *         description: Vehicle fuel type
+ *         description: Tipo de combustível do veículo
  *       - in: query
  *         name: transmission
  *         schema:
  *           type: string
- *         description: Vehicle transmission type
+ *         description: Tipo de transmissão do veículo
  *       - in: query
  *         name: bodyType
  *         schema:
  *           type: string
- *         description: Vehicle body type
+ *         description: Tipo de carroceria do veículo
  *       - in: query
  *         name: color
  *         schema:
  *           type: string
- *         description: Vehicle color
+ *         description: Cor do veículo
  *       - in: query
  *         name: minMileage
  *         schema:
  *           type: number
- *         description: Minimum mileage
+ *         description: Quilometragem mínima
  *       - in: query
  *         name: maxMileage
  *         schema:
  *           type: number
- *         description: Maximum mileage
+ *         description: Quilometragem máxima
  *       - in: query
  *         name: page
  *         schema:
  *           type: integer
  *           minimum: 1
- *         description: "Page number (default: 1)"
+ *         description: "Número da página (padrão: 1)"
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           minimum: 1
- *         description: "Items per page (default: 10)"
+ *         description: "Itens por página (padrão: 10)"
  *     responses:
  *       200:
- *         description: List of filtered vehicles with pagination information
+ *         description: Lista de veículos filtrados com informações de paginação
  *         content:
  *           application/json:
  *             schema:
@@ -389,7 +389,7 @@ export const getUserVehicles = async (req: Request, res: Response) => {
  *                   type: string
  *                   example: /uploads/vehicles/some_image.jpg
  *       500:
- *         description: Server error
+ *         description: Erro do servidor
  *         content:
  *           application/json:
  *             schema:
@@ -398,18 +398,18 @@ export const getUserVehicles = async (req: Request, res: Response) => {
 export const searchVehicles = async (req: Request, res: Response) => {
     const { brand, vehicleModel, engine, year, minPrice, maxPrice, state, city, fuel, transmission, bodyType, color, mileage, name, minMileage, maxMileage, minYear, maxYear } = req.query; // Adicionei minMileage, maxMileage, minYear e maxYear
 
-    const page = parseInt(req.query.page as string) || 1; // Default to page 1
-    const limit = parseInt(req.query.limit as string) || 10; // Default to 10 items per page
-    const sortBy = req.query.sortBy as string || 'created_at'; // Default sort by 'created_at'
-    const sortOrder = req.query.sortOrder as string || (sortBy === 'created_at' ? 'desc' : 'asc'); // Default 'desc' for created_at, 'asc' for others
+    const page = parseInt(req.query.page as string) || 1; // Padrão para página 1
+    const limit = parseInt(req.query.limit as string) || 10; // Padrão para 10 itens por página
+    const sortBy = req.query.sortBy as string || 'created_at'; // Padrão de ordenação por 'created_at'
+    const sortOrder = req.query.sortOrder as string || (sortBy === 'created_at' ? 'desc' : 'asc'); // Padrão 'desc' para created_at, 'asc' para outros
     const skip = (page - 1) * limit;
 
     let filter: any = {};
 
     if (name) {
-        const keywords = (name as string).split(' ').filter(Boolean); // Split by space and remove empty strings
+        const keywords = (name as string).split(' ').filter(Boolean); // Divide por espaço e remove strings vazias
         const keywordFilters = keywords.map(keyword => {
-            const strippedKeyword = stripAccents(keyword); // Strip accents from the keyword
+            const strippedKeyword = stripAccents(keyword); // Remove acentos da palavra-chave
             const searchRegex = new RegExp(strippedKeyword, 'i');
             const yearSearch = parseInt(keyword);
             return {
@@ -420,20 +420,20 @@ export const searchVehicles = async (req: Request, res: Response) => {
                     { color: searchRegex },
                     { state: searchRegex },
                     { city: searchRegex },
-                    ...(isNaN(yearSearch) ? [] : [{ year: yearSearch }]), // Add year search only if it's a valid number
+                    ...(isNaN(yearSearch) ? [] : [{ year: yearSearch }]), // Adiciona busca por ano apenas se for um número válido
                 ]
             };
         });
         filter.$and = [...(filter.$and || []), ...keywordFilters];
     }
     if (brand) {
-        filter.brand = { $regex: new RegExp(stripAccents(brand as string), 'i') }; // Apply stripAccents to brand filter
+        filter.brand = { $regex: new RegExp(stripAccents(brand as string), 'i') }; // Aplica stripAccents ao filtro de marca
     }
     if (vehicleModel) {
-        filter.vehicleModel = { $regex: new RegExp(stripAccents(vehicleModel as string), 'i') }; // Apply stripAccents to vehicleModel filter
+        filter.vehicleModel = { $regex: new RegExp(stripAccents(vehicleModel as string), 'i') }; // Aplica stripAccents ao filtro de modelo de veículo
     }
     if (engine) {
-        filter.engine = { $regex: new RegExp(stripAccents(engine as string), 'i') }; // Apply stripAccents to engine filter
+        filter.engine = { $regex: new RegExp(stripAccents(engine as string), 'i') }; // Aplica stripAccents ao filtro de motorização
     }
 
     // Validação para campos numéricos
@@ -468,7 +468,7 @@ export const searchVehicles = async (req: Request, res: Response) => {
         filter.bodyType = { $regex: new RegExp(bodyType as string, 'i') };
     }
     if (color) {
-        filter.color = { $regex: new RegExp(stripAccents(color as string), 'i') }; // Apply stripAccents to color filter
+        filter.color = { $regex: new RegExp(stripAccents(color as string), 'i') }; // Aplica stripAccents ao filtro de cor
     }
 
     const parsedMinMileage = parseInt(minMileage as string);
@@ -496,7 +496,7 @@ export const searchVehicles = async (req: Request, res: Response) => {
 
     try {
         const filteredVehicles = await Vehicle.find(filter)
-            .select('-description -features -images') // Exclude description and features
+            .select('-description -features -images') // Exclui descrição e features
             .sort(sort)
             .skip(skip)
             .limit(limit);
@@ -506,7 +506,7 @@ export const searchVehicles = async (req: Request, res: Response) => {
             const firstImageUrl = firstImageDoc ? firstImageDoc.imageUrl : null;
 
             const vehicleObject = vehicle.toJSON();
-            // The images array is not populated, so no need to delete it. It won't be there.
+            // O array de imagens não é populado, então não há necessidade de excluí-lo. Ele não estará lá.
             return { ...vehicleObject, firstImageUrl };
         }));
 
@@ -520,7 +520,7 @@ export const searchVehicles = async (req: Request, res: Response) => {
         });
     } catch (err: any) {
         console.error(err);
-        res.status(500).json({ message: 'Server error', error: err.message });
+        res.status(500).json({ message: 'Erro do servidor', error: err.message });
     }
 };
 
@@ -528,7 +528,7 @@ export const searchVehicles = async (req: Request, res: Response) => {
  * @swagger
  * /vehicles/by-city-state:
  *   get:
- *     summary: Get vehicles by city and state
+ *     summary: Obtém veículos por cidade e estado
  *     tags: [Vehicles]
  *     parameters:
  *       - in: query
@@ -536,16 +536,16 @@ export const searchVehicles = async (req: Request, res: Response) => {
  *         schema:
  *           type: string
  *         required: true
- *         description: City to search for vehicles
+ *         description: Cidade para buscar veículos
  *       - in: query
  *         name: state
  *         schema:
  *           type: string
  *         required: true
- *         description: State to search for vehicles
+ *         description: Estado para buscar veículos
  *     responses:
  *       200:
- *         description: List of vehicles found for the city and state
+ *         description: Lista de veículos encontrados para a cidade e estado
  *         content:
  *           application/json:
  *             schema:
@@ -553,7 +553,7 @@ export const searchVehicles = async (req: Request, res: Response) => {
  *               items:
  *                 $ref: '#/components/schemas/Vehicle'
  *       400:
- *         description: Missing Parameters Error
+ *         description: Erro de Parâmetros Ausentes
  *         content:
  *           application/json:
  *             schema:
@@ -561,9 +561,9 @@ export const searchVehicles = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Please provide a city and state to search
+ *                   example: Por favor, forneça uma cidade e estado para buscar
  *       500:
- *         description: Server Error
+ *         description: Erro do Servidor
  *         content:
  *           application/json:
  *             schema:
@@ -571,7 +571,7 @@ export const searchVehicles = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Error ao buscar veículos por cidade e estado
+ *                   example: Erro ao buscar veículos por cidade e estado
  */
 export const getVehiclesByCityAndState = async (req: Request, res: Response) => {
     try {
@@ -593,7 +593,7 @@ export const getVehiclesByCityAndState = async (req: Request, res: Response) => 
  * @swagger
  * /vehicles:
  *   post:
- *     summary: Publish a new vehicle for sale
+ *     summary: Publica um novo veículo para venda
  *     tags: [Vehicles]
  *     security:
  *       - bearerAuth: []
@@ -681,7 +681,7 @@ export const getVehiclesByCityAndState = async (req: Request, res: Response) => 
  *                 example: '+55 (11) 98765-4321'
  *     responses:
  *       201:
- *         description: Vehicle published successfully
+ *         description: Veículo publicado com sucesso
  *         content:
  *           application/json:
  *             schema:
@@ -689,11 +689,11 @@ export const getVehiclesByCityAndState = async (req: Request, res: Response) => 
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Vehicle published successfully
+ *                   example: Veículo publicado com sucesso
  *                 vehicle:
  *                   $ref: '#/components/schemas/Vehicle'
  *       400:
- *         description: Invalid vehicle data or Validation Error
+ *         description: Dados do veículo inválidos ou Erro de Validação
  *         content:
  *           application/json:
  *             schema:
@@ -701,7 +701,7 @@ export const getVehiclesByCityAndState = async (req: Request, res: Response) => 
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Invalid vehicle data
+ *                   example: Dados do veículo inválidos
  *                 errors:
  *                   type: array
  *                   items:
@@ -714,7 +714,7 @@ export const getVehiclesByCityAndState = async (req: Request, res: Response) => 
  *                       message:
  *                         type: string
  *       401:
- *         description: Unauthorized
+ *         description: Não autorizado
  *         content:
  *           application/json:
  *             schema:
@@ -722,9 +722,9 @@ export const getVehiclesByCityAndState = async (req: Request, res: Response) => 
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Unauthorized: User ID not found"
+ *                   example: "Não autorizado: ID do usuário não encontrado"
  *       500:
- *         description: Server error
+ *         description: Erro do servidor
  */
 export const addVehicle = async (req: Request, res: Response) => {
     try {
@@ -736,7 +736,7 @@ export const addVehicle = async (req: Request, res: Response) => {
         const { title, brand, vehicleModel, engine, year, price, mileage, state, city, fuel, transmission, bodyType, color, description, features, announcerName, announcerEmail, announcerPhone } = validatedData;
 
         const newVehicle = new Vehicle({
-            owner_id: req.userId, // Reverted to use req.userId directly
+            owner_id: req.userId, // Revertido para usar req.userId diretamente
             title,
             brand,
             vehicleModel,
@@ -776,7 +776,7 @@ export const addVehicle = async (req: Request, res: Response) => {
  * @swagger
  * /vehicles/{id}:
  *   put:
- *     summary: Update an existing vehicle's details
+ *     summary: Atualiza os detalhes de um veículo existente
  *     tags: [Vehicles]
  *     security:
  *       - bearerAuth: []
@@ -786,7 +786,7 @@ export const addVehicle = async (req: Request, res: Response) => {
  *         schema:
  *           type: string
  *         required: true
- *         description: Vehicle ID to update
+ *         description: ID do veículo a ser atualizado
  *     requestBody:
  *       required: true
  *       content:
@@ -853,7 +853,7 @@ export const addVehicle = async (req: Request, res: Response) => {
  *                 example: '+55 (11) 98765-4321'
  *     responses:
  *       200:
- *         description: Vehicle updated successfully
+ *         description: Veículo atualizado com sucesso
  *         content:
  *           application/json:
  *             schema:
@@ -861,11 +861,11 @@ export const addVehicle = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Vehicle updated successfully
+ *                   example: Veículo atualizado com sucesso
  *                 vehicle:
  *                   $ref: '#/components/schemas/Vehicle'
  *       400:
- *         description: Validation Error
+ *         description: Erro de Validação
  *         content:
  *           application/json:
  *             schema:
@@ -873,7 +873,7 @@ export const addVehicle = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Validation Error
+ *                   example: Erro de Validação
  *                 errors:
  *                   type: array
  *                   items:
@@ -886,7 +886,7 @@ export const addVehicle = async (req: Request, res: Response) => {
  *                       message:
  *                         type: string
  *       401:
- *         description: Unauthorized
+ *         description: Não autorizado
  *         content:
  *           application/json:
  *             schema:
@@ -894,9 +894,9 @@ export const addVehicle = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Unauthorized
+ *                   example: Não autorizado
  *       404:
- *         description: Vehicle not found or permission denied
+ *         description: Veículo não encontrado ou permissão negada
  *         content:
  *           application/json:
  *             schema:
@@ -904,16 +904,16 @@ export const addVehicle = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Vehicle not found or you do not have permission to edit this vehicle
+ *                   example: Veículo não encontrado ou você não tem permissão para editar este veículo
  *       500:
- *         description: Server error
+ *         description: Erro do servidor
  */
 export const updateVehicle = async (req: Request, res: Response) => {
     const { id } = req.params;
-    const ownerId = req.userId; // Use req.userId as set by auth middleware
+    const ownerId = req.userId; // Usa req.userId conforme definido pelo middleware de autenticação
 
     try {
-        // Validate request body with zod schema (partial for updates)
+        // Valida o corpo da requisição com o esquema zod (parcial para atualizações)
         const validatedData = vehicleSchema.partial().parse(req.body);
 
         const vehicle = await Vehicle.findOne({ _id: id, owner_id: ownerId });
@@ -924,29 +924,29 @@ export const updateVehicle = async (req: Request, res: Response) => {
 
         Object.assign(vehicle, validatedData);
 
-        // Ensure numeric fields are correctly parsed if present in validatedData
+        // Garante que os campos numéricos sejam analisados corretamente se presentes em validatedData
         if (validatedData.year !== undefined) vehicle.year = validatedData.year;
         if (validatedData.price !== undefined) vehicle.price = validatedData.price;
         if (validatedData.mileage !== undefined) vehicle.mileage = validatedData.mileage;
 
         await vehicle.save();
 
-        // After saving, check if the vehicle has any images.
-        // If not, and it's an update scenario, we should prevent it or return an error.
+        // Após salvar, verifica se o veículo possui alguma imagem.
+        // Se não, e for um cenário de atualização, devemos impedi-lo ou retornar um erro.
         const currentImagesCount = await Image.countDocuments({ vehicle_id: vehicle._id });
         if (currentImagesCount === 0) {
-            // Optionally, you might want to revert the vehicle.save() here if this is a critical requirement.
-            // For now, we'll just return an error and expect the frontend to handle image uploads separately.
-            return res.status(400).json({ message: 'A vehicle must have at least one image.' });
+            // Opcionalmente, você pode querer reverter o vehicle.save() aqui se este for um requisito crítico.
+            // Por enquanto, apenas retornaremos um erro e esperamos que o frontend lide com os uploads de imagens separadamente.
+            return res.status(400).json({ message: 'Um veículo deve ter pelo menos uma imagem.' });
         }
 
-        res.status(200).json({ message: 'Vehicle updated successfully', vehicle });
+        res.status(200).json({ message: 'Veículo atualizado com sucesso', vehicle });
     } catch (err: any) {
         if (err instanceof z.ZodError) {
-            return res.status(400).json({ message: 'Validation Error', errors: err.issues });
+            return res.status(400).json({ message: 'Erro de Validação', errors: err.issues });
         }
         console.error(err);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Erro do servidor' });
     }
 };
 
@@ -954,7 +954,7 @@ export const updateVehicle = async (req: Request, res: Response) => {
  * @swagger
  * /vehicles/{id}/images:
  *   post:
- *     summary: Upload vehicle images
+ *     summary: Upload de imagens do veículo
  *     tags: [Vehicles]
  *     security:
  *       - bearerAuth: []
@@ -964,7 +964,7 @@ export const updateVehicle = async (req: Request, res: Response) => {
  *         schema:
  *           type: string
  *         required: true
- *         description: Vehicle ID to upload images for
+ *         description: ID do veículo para upload de imagens
  *     requestBody:
  *       required: true
  *       content:
@@ -978,10 +978,10 @@ export const updateVehicle = async (req: Request, res: Response) => {
  *                   type: string
  *                   format: binary
  *                 maxItems: 10
- *                 description: Up to 10 image files (jpeg, jpg, png, gif)
+ *                 description: Até 10 arquivos de imagem (jpeg, jpg, png, gif)
  *     responses:
  *       200:
- *         description: Images uploaded successfully
+ *         description: Imagens carregadas com sucesso
  *         content:
  *           application/json:
  *             schema:
@@ -989,14 +989,14 @@ export const updateVehicle = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Images uploaded successfully
+ *                   example: Imagens carregadas com sucesso
  *                 images:
  *                   type: array
  *                   items:
  *                     type: string
  *                   example: ["/uploads/vehicles/image1.jpg", "/uploads/vehicles/image2.png"]
  *       400:
- *         description: No Files Provided or Invalid File Type
+ *         description: Nenhum arquivo fornecido ou tipo de arquivo inválido
  *         content:
  *           application/json:
  *             schema:
@@ -1004,9 +1004,9 @@ export const updateVehicle = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: No image files provided
+ *                   example: Nenhum arquivo de imagem fornecido
  *       404:
- *         description: Vehicle not found or permission denied
+ *         description: Veículo não encontrado ou permissão negada
  *         content:
  *           application/json:
  *             schema:
@@ -1014,9 +1014,9 @@ export const updateVehicle = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Vehicle not found or you do not have permission to upload images for this vehicle
+ *                   example: Veículo não encontrado ou você não tem permissão para carregar imagens para este veículo
  *       500:
- *         description: Server Error
+ *         description: Erro do servidor
  */
 export const uploadImages = async (req: Request, res: Response) => {
     try {
@@ -1025,9 +1025,9 @@ export const uploadImages = async (req: Request, res: Response) => {
         }
 
         const vehicleId = req.params.id;
-        const ownerId = req.userId; // Use req.userId as set by auth middleware
+        const ownerId = req.userId; // Usa req.userId conforme definido pelo middleware de autenticação
 
-        // Verify vehicle exists and belongs to the user
+        // Verifica se o veículo existe e pertence ao usuário
         const vehicle = await Vehicle.findOne({ _id: vehicleId, owner_id: ownerId });
 
         if (!vehicle) {
@@ -1036,26 +1036,26 @@ export const uploadImages = async (req: Request, res: Response) => {
 
         const imageUrls = (req.files as Express.Multer.File[]).map(file => `/uploads/vehicles/${file.filename}`);
 
-        // Enforce the 10-image limit
+        // Aplica o limite de 10 imagens
         if ((vehicle.images?.length || 0) + imageUrls.length > 10) {
-            // Clean up newly uploaded files if the limit is exceeded
+            // Limpa os arquivos recém-carregados se o limite for excedido
             imageUrls.forEach(url => {
                 const filePath = path.join(__dirname, '../../uploads/vehicles', path.basename(url));
                 if (fs.existsSync(filePath)) {
                     fs.unlinkSync(filePath);
                 }
             });
-            return res.status(400).json({ message: `Cannot upload more than 10 images. You already have ${vehicle.images?.length || 0} images.` });
+            return res.status(400).json({ message: `Não é possível carregar mais de 10 imagens. Você já tem ${vehicle.images?.length || 0} imagens.` });
         }
 
-        // Add new image URLs to the vehicle's images array
+        // Adiciona as novas URLs das imagens ao array de imagens do veículo
         vehicle.images = [...(vehicle.images || []), ...imageUrls];
         await vehicle.save();
 
-        res.status(200).json({ message: 'Images uploaded successfully', images: imageUrls });
+        res.status(200).json({ message: 'Imagens carregadas com sucesso', images: imageUrls });
     } catch (err: any) {
         console.error(err);
-        res.status(500).json({ message: 'Error uploading images', error: err.message });
+        res.status(500).json({ message: 'Erro ao carregar imagens', error: err.message });
     }
 };
 
@@ -1063,7 +1063,7 @@ export const uploadImages = async (req: Request, res: Response) => {
  * @swagger
  * /vehicles/{id}/images/{imageId}:
  *   delete:
- *     summary: Delete a vehicle image
+ *     summary: Exclui uma imagem do veículo
  *     tags: [Vehicles]
  *     security:
  *       - bearerAuth: []
@@ -1073,16 +1073,16 @@ export const uploadImages = async (req: Request, res: Response) => {
  *         schema:
  *           type: string
  *         required: true
- *         description: Vehicle ID
+ *         description: ID do veículo
  *       - in: path
  *         name: imageId
  *         schema:
  *           type: string
  *         required: true
- *         description: ID of the image to delete
+ *         description: ID da imagem a ser excluída
  *     responses:
  *       200:
- *         description: Image deleted successfully
+ *         description: Imagem excluída com sucesso
  *         content:
  *           application/json:
  *             schema:
@@ -1090,9 +1090,9 @@ export const uploadImages = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Image deleted successfully
+ *                   example: Imagem excluída com sucesso
  *       404:
- *         description: Not Found/Permission Error
+ *         description: Não encontrado/Erro de permissão
  *         content:
  *           application/json:
  *             schema:
@@ -1100,23 +1100,23 @@ export const uploadImages = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Vehicle not found or you do not have permission to delete images for this vehicle
+ *                   example: Veículo não encontrado ou você não tem permissão para excluir imagens deste veículo
  *       500:
- *         description: Server Error
+ *         description: Erro do servidor
  */
 export const deleteImage = async (req: Request, res: Response) => {
     try {
         const { id, imageName } = req.params;
-        const ownerId = req.userId; // Use req.userId as set by auth middleware
+        const ownerId = req.userId; // Usa req.userId conforme definido pelo middleware de autenticação
 
-        // Verify vehicle exists and belongs to the user
+        // Verifica se o veículo existe e pertence ao usuário
         const vehicle = await Vehicle.findOne({ _id: id, owner_id: ownerId });
 
         if (!vehicle) {
             return res.status(404).json({ message: 'Vehicle not found or you do not have permission to delete images for this vehicle' });
         }
 
-        // Delete the file from the filesystem
+        // Exclui o arquivo do sistema de arquivos
         const imagePath = path.join(__dirname, '../../uploads/vehicles', imageName);
         if (fs.existsSync(imagePath)) {
             fs.unlinkSync(imagePath);
@@ -1124,7 +1124,7 @@ export const deleteImage = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Image not found on filesystem' });
         }
 
-        // Remove the image URL from the vehicle's images array
+        // Remove a URL da imagem do array de imagens do veículo
         if (vehicle.images) {
             vehicle.images = vehicle.images.filter(img => path.basename(img) !== imageName);
             await vehicle.save();
@@ -1141,7 +1141,7 @@ export const deleteImage = async (req: Request, res: Response) => {
  * @swagger
  * /vehicles/{id}:
  *   delete:
- *     summary: Delete a vehicle
+ *     summary: Exclui um veículo
  *     tags: [Vehicles]
  *     security:
  *       - bearerAuth: []
@@ -1151,10 +1151,10 @@ export const deleteImage = async (req: Request, res: Response) => {
  *         schema:
  *           type: string
  *         required: true
- *         description: Vehicle ID to delete
+ *         description: ID do veículo a ser excluído
  *     responses:
  *       200:
- *         description: Vehicle deleted successfully
+ *         description: Veículo excluído com sucesso
  *         content:
  *           application/json:
  *             schema:
@@ -1162,9 +1162,9 @@ export const deleteImage = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Vehicle deleted successfully
+ *                   example: Veículo excluído com sucesso
  *       401:
- *         description: Unauthorized
+ *         description: Não autorizado
  *         content:
  *           application/json:
  *             schema:
@@ -1172,9 +1172,9 @@ export const deleteImage = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Unauthorized
+ *                   example: Não autorizado
  *       404:
- *         description: Not Found/Permission Error
+ *         description: Não encontrado/Erro de permissão
  *         content:
  *           application/json:
  *             schema:
@@ -1182,50 +1182,50 @@ export const deleteImage = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Vehicle not found or you do not have permission to delete this vehicle
+ *                   example: Veículo não encontrado ou você não tem permissão para excluir este veículo
  *       500:
- *         description: Server error
+ *         description: Erro do servidor
  */
 export const deleteVehicle = async (req: Request, res: Response) => {
     const { id } = req.params;
-    const ownerId = req.userId; // Use req.userId as set by auth middleware
+    const ownerId = req.userId; // Usa req.userId conforme definido pelo middleware de autenticação
 
     try {
-        // Find the vehicle to ensure it exists and belongs to the user
+        // Encontra o veículo para garantir que ele exista e pertença ao usuário
         const vehicleToDelete = await Vehicle.findOne({ _id: id, owner_id: ownerId });
 
         if (!vehicleToDelete) {
             return res.status(404).json({ message: 'Vehicle not found or you do not have permission to delete this vehicle' });
         }
 
-        // 1. Find all images associated with the vehicle
+        // 1. Encontra todas as imagens associadas ao veículo
         const imagesToDelete = await Image.find({ vehicle_id: id });
 
-        // 2. For each associated image, delete the physical file from the filesystem
+        // 2. Para cada imagem associada, exclui o arquivo físico do sistema de arquivos
         for (const image of imagesToDelete) {
             const filePath = path.join(__dirname, '../../uploads/vehicles', path.basename(image.imageUrl));
             if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath);
             } else {
-                console.warn(`File not found on filesystem but present in DB: ${filePath}`);
+                console.warn(`Arquivo não encontrado no sistema de arquivos, mas presente no DB: ${filePath}`);
             }
         }
 
-        // 3. Delete the image records from the Image collection in the database
+        // 3. Exclui os registros de imagem da coleção Image no banco de dados
         await Image.deleteMany({ vehicle_id: id });
 
-        // 4. Delete the vehicle record from the Vehicle collection in the database
+        // 4. Exclui o registro do veículo da coleção Vehicle no banco de dados
         const result = await Vehicle.deleteOne({ _id: id, owner_id: ownerId });
 
         if (result.deletedCount === 0) {
-            // This case should ideally not be reached if vehicleToDelete was found, but for safety
+            // Este caso idealmente não deveria ser alcançado se vehicleToDelete foi encontrado, mas por segurança
             return res.status(404).json({ message: 'Vehicle not found or you do not have permission to delete this vehicle' });
         }
 
-        res.status(200).json({ message: 'Vehicle deleted successfully' });
+        res.status(200).json({ message: 'Veículo excluído com sucesso' });
     } catch (err: any) {
         console.error(err);
-        res.status(500).json({ message: 'Server error', error: err.message });
+        res.status(500).json({ message: 'Erro do servidor', error: err.message });
     }
 };
 
@@ -1233,7 +1233,7 @@ export const deleteVehicle = async (req: Request, res: Response) => {
  * @swagger
  * /vehicles/{id}:
  *   get:
- *     summary: Get a vehicle by ID
+ *     summary: Obtém um veículo por ID
  *     tags: [Vehicles]
  *     parameters:
  *       - in: path
@@ -1241,22 +1241,22 @@ export const deleteVehicle = async (req: Request, res: Response) => {
  *         schema:
  *           type: string
  *         required: true
- *         description: ID of the vehicle to retrieve
+ *         description: ID do veículo a ser recuperado
  *     responses:
  *       200:
- *         description: Vehicle found
+ *         description: Veículo encontrado
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Vehicle'
  *       404:
- *         description: Vehicle not found
+ *         description: Veículo não encontrado
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *       500:
- *         description: Server error
+ *         description: Erro do servidor
  *         content:
  *           application/json:
  *             schema:
@@ -1272,11 +1272,11 @@ export const getVehicleById = async (req: Request, res: Response) => {
         }
 
         const vehicleObject = vehicle.toJSON();
-        delete vehicleObject.images; // Remove the images array
+        delete vehicleObject.images; // Remove o array de imagens
 
         res.status(200).json(vehicleObject);
     } catch (err: any) {
         console.error(err);
-        res.status(500).json({ message: 'Error fetching vehicle', error: err.message });
+        res.status(500).json({ message: 'Erro ao buscar veículo', error: err.message });
     }
 };

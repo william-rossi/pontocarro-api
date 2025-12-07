@@ -1,17 +1,17 @@
 import multer, { Multer } from 'multer';
 import { Request } from 'express';
 
-// Configure storage for Multer
-const storage = multer.memoryStorage(); // Store files in memory as buffers
+// Configura o armazenamento para o Multer
+const storage = multer.memoryStorage(); // Armazena arquivos na memória como buffers
 
-// File filter to accept only images
+// Filtro de arquivo para aceitar apenas imagens
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     if (file.mimetype.startsWith('image/')) {
         cb(null, true);
     } else {
-        cb(null, false); // Change to null for error argument
+        cb(null, false); // Altera para null para o argumento de erro
     }
 };
 
-// Initialize Multer upload
-export const uploadVehicleImages = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024 } }).array('images', 10); // Max 10 images, 10MB each
+// Inicializa o upload do Multer
+export const uploadVehicleImages = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024 } }).array('images', 10); // Máximo de 10 imagens, 10MB cada

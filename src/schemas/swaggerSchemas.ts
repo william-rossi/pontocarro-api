@@ -56,15 +56,15 @@
  * paths:
  *   /user/{id}/update:
  *     put:
- *       summary: Update user profile
- *       description: Update the profile data for a specific user.
+ *       summary: Atualizar perfil do usuário
+ *       description: Atualiza os dados do perfil para um usuário específico.
  *       tags:
  *         - User
  *       parameters:
  *         - in: path
  *           name: id
  *           required: true
- *           description: ID of the user to update
+ *           description: ID do usuário a ser atualizado
  *           schema:
  *             type: string
  *           example: 60f...
@@ -99,7 +99,7 @@
  *                   example: "Senha@123"
  *       responses:
  *         200:
- *           description: User profile updated successfully
+ *           description: Perfil do usuário atualizado com sucesso
  *           content:
  *             application/json:
  *               schema:
@@ -112,7 +112,7 @@
  *                     type: string
  *                     example: eyJhbGciOiJIUzI1Ni...
  *         400:
- *           description: Validation error
+ *           description: Erro de validação
  *           content:
  *             application/json:
  *               schema:
@@ -120,7 +120,7 @@
  *                 properties:
  *                   message:
  *                     type: string
- *                     example: Validation error
+ *                     example: Erro de validação
  *                   errors:
  *                     type: array
  *                     items:
@@ -138,13 +138,13 @@
  *                             type: string
  *                             example: email
  *         401:
- *           description: Unauthorized
+ *           description: Não autorizado
  *           content:
  *             application/json:
  *               schema:
  *                 $ref: '#/components/schemas/Error'
  *         404:
- *           description: User not found
+ *           description: Usuário não encontrado
  *           content:
  *             application/json:
  *               schema:

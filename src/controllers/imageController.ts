@@ -3,8 +3,8 @@ import Image from '../models/Image';
 import Vehicle from '../models/Vehicle';
 import path from 'path';
 import fs from 'fs';
-import sharp from 'sharp'; // Import sharp for image processing
-import { v4 as uuidv4 } from 'uuid'; // For generating unique filenames
+import sharp from 'sharp'; // Importa sharp para processamento de imagem
+import { v4 as uuidv4 } from 'uuid'; // Para gerar nomes de arquivo únicos
 
 export const uploadImages = async (req: Request, res: Response) => {
     try {
@@ -13,9 +13,9 @@ export const uploadImages = async (req: Request, res: Response) => {
         }
 
         const vehicleId = req.params.id;
-        const ownerId = req.userId; // Use req.userId as set by auth middleware
+        const ownerId = req.userId; // Usa req.userId conforme definido pelo middleware de autenticação
 
-        // Verify vehicle exists and belongs to the user
+        // Verifica se o veículo existe e pertence ao usuário
         const vehicle = await Vehicle.findOne({ _id: vehicleId, owner_id: ownerId });
 
         if (!vehicle) {
@@ -24,7 +24,7 @@ export const uploadImages = async (req: Request, res: Response) => {
 
         const newImageFiles = req.files as Express.Multer.File[];
 
-        // Check total images limit (existing + new)
+        // Verifica o limite total de imagens (existentes + novas)
         const existingImagesCount = await Image.countDocuments({ vehicle_id: vehicleId });
         if (existingImagesCount + newImageFiles.length > 10) {
             return res.status(400).json({ message: `Cannot upload more than 10 images. You already have ${existingImagesCount} images.` });
@@ -34,14 +34,14 @@ export const uploadImages = async (req: Request, res: Response) => {
         const imageIds: string[] = [];
 
         for (const file of newImageFiles) {
-            const uniqueFilename = `${uuidv4()}.webp`; // Use WebP for better compression
+            const uniqueFilename = `${uuidv4()}.webp`; // Usa WebP para melhor compressão
             const outputPath = path.join(__dirname, '../../uploads/vehicles', uniqueFilename);
 
             await sharp(file.buffer)
-                .resize(1920, undefined, { // Resize to max 1920px width, auto height
-                    withoutEnlargement: true // Don't enlarge images smaller than 1920px
+                .resize(1920, undefined, { // Redimensiona para largura máxima de 1920px, altura automática
+                    withoutEnlargement: true // Não amplia imagens menores que 1920px
                 })
-                .webp({ quality: 80 }) // Compress to WebP with 80% quality
+                .webp({ quality: 80 }) // Comprime para WebP com qualidade de 80%
                 .toFile(outputPath);
 
             const imageUrl = `/uploads/vehicles/${uniqueFilename}`;
@@ -54,7 +54,7 @@ export const uploadImages = async (req: Request, res: Response) => {
             imageIds.push(savedImage._id.toString());
         }
 
-        // Add new image IDs to the vehicle's images array
+        // Adiciona novos IDs de imagem ao array de imagens do veículo
         vehicle.images = [...(vehicle.images || []), ...imageIds];
         await vehicle.save();
 
@@ -70,7 +70,7 @@ export const uploadImages = async (req: Request, res: Response) => {
  * @swagger
  * /images/{vehicleId}:
  *   get:
- *     summary: Get all images for a specific vehicle
+ *     summary: Obtém todas as imagens de um veículo específico
  *     tags: [Images]
  *     parameters:
  *       - in: path
@@ -78,10 +78,10 @@ export const uploadImages = async (req: Request, res: Response) => {
  *         schema:
  *           type: string
  *         required: true
- *         description: ID of the vehicle to retrieve images for
+ *         description: ID do veículo para o qual as imagens serão recuperadas
  *     responses:
  *       200:
- *         description: List of images for the vehicle
+ *         description: Lista de imagens para o veículo
  *         content:
  *           application/json:
  *             schema:
@@ -89,13 +89,13 @@ export const uploadImages = async (req: Request, res: Response) => {
  *               items:
  *                 $ref: '#/components/schemas/Image'
  *       404:
- *         description: No images found for this vehicle
+ *         description: Nenhuma imagem encontrada para este veículo
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *       500:
- *         description: Server error
+ *         description: Erro do servidor
  *         content:
  *           application/json:
  *             schema:
@@ -121,7 +121,7 @@ export const getImagesByVehicleId = async (req: Request, res: Response) => {
  * @swagger
  * /images/{vehicleId}/first:
  *   get:
- *     summary: Get the first image for a specific vehicle
+ *     summary: Obtém a primeira imagem de um veículo específico
  *     tags: [Images]
  *     parameters:
  *       - in: path
@@ -129,22 +129,22 @@ export const getImagesByVehicleId = async (req: Request, res: Response) => {
  *         schema:
  *           type: string
  *         required: true
- *         description: ID of the vehicle to retrieve the first image for
+ *         description: ID do veículo para o qual a primeira imagem será recuperada
  *     responses:
  *       200:
- *         description: First image found for the vehicle
+ *         description: Primeira imagem encontrada para o veículo
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Image'
  *       404:
- *         description: No images found for this vehicle
+ *         description: Nenhuma imagem encontrada para este veículo
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *       500:
- *         description: Server error
+ *         description: Erro do servidor
  *         content:
  *           application/json:
  *             schema:
@@ -153,7 +153,7 @@ export const getImagesByVehicleId = async (req: Request, res: Response) => {
 export const getFirstImageByVehicleId = async (req: Request, res: Response) => {
     try {
         const { vehicleId } = req.params;
-        const image = await Image.findOne({ vehicle_id: vehicleId }).sort({ created_at: 1 }); // Get the first image by creation date
+        const image = await Image.findOne({ vehicle_id: vehicleId }).sort({ created_at: 1 }); // Obtém a primeira imagem por data de criação
 
         if (!image) {
             return res.status(404).json({ message: 'No images found for this vehicle.' });
@@ -170,7 +170,7 @@ export const getFirstImageByVehicleId = async (req: Request, res: Response) => {
  * @swagger
  * /images/{imageId}:
  *   get:
- *     summary: Get a specific image by its ID
+ *     summary: Obtém uma imagem específica pelo seu ID
  *     tags: [Images]
  *     parameters:
  *       - in: path
@@ -178,22 +178,22 @@ export const getFirstImageByVehicleId = async (req: Request, res: Response) => {
  *         schema:
  *           type: string
  *         required: true
- *         description: ID of the image to retrieve
+ *         description: ID da imagem a ser recuperada
  *     responses:
  *       200:
- *         description: Image found
+ *         description: Imagem encontrada
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Image'
  *       404:
- *         description: Image not found
+ *         description: Imagem não encontrada
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *       500:
- *         description: Server error
+ *         description: Erro do servidor
  *         content:
  *           application/json:
  *             schema:
@@ -217,36 +217,36 @@ export const getImageById = async (req: Request, res: Response) => {
 
 export const deleteImage = async (req: Request, res: Response) => {
     try {
-        const { id, imageId } = req.params; // id is vehicleId, imageId is the image _id
-        const ownerId = req.userId; // User ID from authentication middleware
+        const { id, imageId } = req.params; // id é vehicleId, imageId é o _id da imagem
+        const ownerId = req.userId; // ID do usuário do middleware de autenticação
 
-        // Verify vehicle exists and belongs to the user
+        // Verifica se o veículo existe e pertence ao usuário
         const vehicle = await Vehicle.findOne({ _id: id, owner_id: ownerId });
 
         if (!vehicle) {
             return res.status(404).json({ message: 'Vehicle not found or you do not have permission to delete images for this vehicle' });
         }
 
-        // Find the image to delete
+        // Encontra a imagem para deletar
         const imageToDelete = await Image.findOne({ _id: imageId, vehicle_id: id });
 
         if (!imageToDelete) {
             return res.status(404).json({ message: 'Image not found for this vehicle.' });
         }
 
-        // Delete the file from the filesystem
+        // Exclui o arquivo do sistema de arquivos
         const filename = path.basename(imageToDelete.imageUrl);
         const filePath = path.join(__dirname, '../../uploads/vehicles', filename);
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
         } else {
-            console.warn(`File not found on filesystem but present in DB: ${filePath}`);
+            console.warn(`Arquivo não encontrado no sistema de arquivos, mas presente no DB: ${filePath}`);
         }
 
-        // Remove the image from the database
+        // Remove a imagem do banco de dados
         await Image.deleteOne({ _id: imageId });
 
-        // Remove the image ID from the vehicle's images array
+        // Remove o ID da imagem do array de imagens do veículo
         if (vehicle.images) {
             vehicle.images = vehicle.images.filter(img => img.toString() !== imageId);
             await vehicle.save();
@@ -262,27 +262,45 @@ export const deleteImage = async (req: Request, res: Response) => {
 /**
  * @swagger
  * /vehicles/{id}/images/{imageId}:
+
  *   delete:
- *     summary: Delete a vehicle image
+
+ *     summary: Exclui uma imagem de veículo
+
  *     tags: [Vehicles]
+
  *     security:
+
  *       - bearerAuth: []
+
  *     parameters:
+
  *       - in: path
+
  *         name: id
+
  *         schema:
+
  *           type: string
+
  *         required: true
- *         description: Vehicle ID
+
+ *         description: ID do veículo
+
  *       - in: path
+
  *         name: imageId
+
  *         schema:
+
  *           type: string
+
  *         required: true
- *         description: ID of the image to delete
+
+ *         description: ID da imagem a ser excluída
  *     responses:
  *       200:
- *         description: Image deleted successfully
+ *         description: Imagem excluída com sucesso
  *         content:
  *           application/json:
  *             schema:
@@ -290,9 +308,9 @@ export const deleteImage = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Image deleted successfully
+ *                   example: Imagem excluída com sucesso
  *       404:
- *         description: Not Found/Permission Error
+ *         description: Não Encontrado/Erro de Permissão
  *         content:
  *           application/json:
  *             schema:
@@ -300,9 +318,9 @@ export const deleteImage = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Vehicle not found or you do not have permission to delete images for this vehicle
+ *                   example: Veículo não encontrado ou você não tem permissão para excluir imagens deste veículo
  *       500:
- *         description: Server Error
+ *         description: Erro do Servidor
  *         content:
  *           application/json:
  *             schema:
@@ -310,5 +328,5 @@ export const deleteImage = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Server Error
+ *                   example: Erro do Servidor
  */

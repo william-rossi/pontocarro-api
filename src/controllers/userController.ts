@@ -1,24 +1,24 @@
 import { Request, Response } from 'express';
-import User from '../models/User'; // Import the Mongoose User model
-import Vehicle from '../models/Vehicle'; // Import the Mongoose Vehicle model
+import User from '../models/User'; // Importa o modelo de Usuário do Mongoose
+import Vehicle from '../models/Vehicle'; // Importa o modelo de Veículo do Mongoose
 import { createUserSchema } from '../schemas/userSchema';
 import bcrypt from 'bcryptjs';
 
 /**
- * @api {put} /user/profile Update user profile
+ * @api {put} /user/profile Atualizar perfil do usuário
  * @apiGroup User
- * @apiHeader {String} Authorization Users unique access token
- * @apiParam {String} [username] Username of the user
- * @apiParam {String} [email] Email of the user
- * @apiParam {String} [phone] Phone number of the user
- * @apiParam {String} [state] State of the user
- * @apiParam {String} [city] City of the user
- * @apiSuccess {String} message Success message
- * @apiSuccess {Object} user Updated user object
- * @apiSuccessExample {json} Success-Response:
+ * @apiHeader {String} Authorization Token de acesso único do usuário
+ * @apiParam {String} [username] Nome de usuário
+ * @apiParam {String} [email] E-mail do usuário
+ * @apiParam {String} [phone] Número de telefone do usuário
+ * @apiParam {String} [state] Estado do usuário
+ * @apiParam {String} [city] Cidade do usuário
+ * @apiSuccess {String} message Mensagem de sucesso
+ * @apiSuccess {Object} user Objeto de usuário atualizado
+ * @apiSuccessExample {json} Resposta de Sucesso:
  *     HTTP/1.1 200 OK
  *     {
- *       "message": "User profile updated successfully",
+ *       "message": "Perfil do usuário atualizado com sucesso",
  *       "user": {
  *         "_id": "65bb7b1c3e3a3e3e3e3e3e3e",
  *         "username": "updateduser",
@@ -28,37 +28,37 @@ import bcrypt from 'bcryptjs';
  *         "city": "Sao Paulo"
  *       }
  *     }
- * @apiError {String} message Error message
- * @apiError {Array} [errors] Array of validation errors if validation fails
- * @apiErrorExample {json} User Not Found Error-Response:
+ * @apiError {String} message Mensagem de erro
+ * @apiError {Array} [errors] Array de erros de validação se a validação falhar
+ * @apiErrorExample {json} Resposta de Erro - Usuário Não Encontrado:
  *     HTTP/1.1 404 Not Found
  *     {
- *       "message": "User not found"
+ *       "message": "Usuário não encontrado"
  *     }
- * @apiErrorExample {json} Validation Error-Response:
+ * @apiErrorExample {json} Resposta de Erro - Validação:
  *     HTTP/1.1 400 Bad Request
  *     {
- *       "message": "Validation error",
+ *       "message": "Erro de validação",
  *       "errors": [
  *         { "code": "invalid_string", "message": "Email inválido", "path": ["email"] }
  *       ]
  *     }
- * @apiErrorExample {json} Unauthorized Error-Response:
+ * @apiErrorExample {json} Resposta de Erro - Não Autorizado:
  *     HTTP/1.1 401 Unauthorized
  *     {
- *       "message": "No token, authorization denied"
+ *       "message": "Sem token, autorização negada"
  *     }
- * @apiErrorExample {json} Server Error-Response:
+ * @apiErrorExample {json} Resposta de Erro - Servidor:
  *     HTTP/1.1 500 Internal Server Error
  *     {
- *       "message": "Server error"
+ *       "message": "Erro do servidor"
  *     }
  */
 export const updateUserProfile = async (req: Request, res: Response) => {
-    const { id: userId } = req.params; // Get userId from URL parameters
+    const { id: userId } = req.params; // Obtém o userId dos parâmetros da URL
 
     try {
-        // Validate request body against a partial user schema to allow partial updates
+        // Valida o corpo da requisição contra um esquema de usuário parcial para permitir atualizações parciais
         const validatedData = createUserSchema.partial().parse(req.body);
 
         if (validatedData.password) {
@@ -70,65 +70,65 @@ export const updateUserProfile = async (req: Request, res: Response) => {
             userId,
             { $set: validatedData },
             { new: true, runValidators: true }
-        ).select('-password'); // Exclude password from the returned user object
+        ).select('-password'); // Exclui a senha do objeto de usuário retornado
 
         if (!updatedUser) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ message: 'Usuário não encontrado' });
         }
 
-        res.status(200).json({ message: 'User profile updated successfully', user: updatedUser });
+        res.status(200).json({ message: 'Perfil do usuário atualizado com sucesso', user: updatedUser });
     } catch (err: any) {
         if (err.name === 'ZodError') {
-            return res.status(400).json({ message: 'Validation error', errors: err.errors });
+            return res.status(400).json({ message: 'Erro de validação', errors: err.errors });
         }
         console.error(err);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Erro do servidor' });
     }
 };
 
 /**
- * @api {delete} /user/delete Delete user account
+ * @api {delete} /user/delete Excluir conta de usuário
  * @apiGroup User
- * @apiHeader {String} Authorization Users unique access token
- * @apiSuccess {String} message Success message
- * @apiSuccessExample {json} Success-Response:
+ * @apiHeader {String} Authorization Token de acesso único do usuário
+ * @apiSuccess {String} message Mensagem de sucesso
+ * @apiSuccessExample {json} Resposta de Sucesso:
  *     HTTP/1.1 200 OK
  *     {
- *       "message": "User account deleted successfully"
+ *       "message": "Conta de usuário excluída com sucesso"
  *     }
- * @apiError {String} message Error message
- * @apiErrorExample {json} User Not Found Error-Response:
+ * @apiError {String} message Mensagem de erro
+ * @apiErrorExample {json} Resposta de Erro - Usuário Não Encontrado:
  *     HTTP/1.1 404 Not Found
  *     {
- *       "message": "User not found"
+ *       "message": "Usuário não encontrado"
  *     }
- * @apiErrorExample {json} Unauthorized Error-Response:
+ * @apiErrorExample {json} Resposta de Erro - Não Autorizado:
  *     HTTP/1.1 401 Unauthorized
  *     {
- *       "message": "Unauthorized"
+ *       "message": "Não autorizado"
  *     }
- * @apiErrorExample {json} Server Error-Response:
+ * @apiErrorExample {json} Resposta de Erro - Servidor:
  *     HTTP/1.1 500 Internal Server Error
  *     {
- *       "message": "Server error"
+ *       "message": "Erro do servidor"
  *     }
  */
 export const deleteUserAccount = async (req: Request, res: Response) => {
-    const userId = (req as any).user.id; // user._id is attached by authenticateUser middleware
+    const userId = (req as any).user.id; // user._id é anexado pelo middleware authenticateUser
 
     try {
-        // Delete all vehicles associated with the user
+        // Exclui todos os veículos associados ao usuário
         await Vehicle.deleteMany({ owner_id: userId });
 
         const deletedUser = await User.findByIdAndDelete(userId);
 
         if (!deletedUser) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ message: 'Usuário não encontrado' });
         }
 
-        res.status(200).json({ message: 'User account deleted successfully' });
+        res.status(200).json({ message: 'Conta de usuário excluída com sucesso' });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Erro do servidor' });
     }
 };
