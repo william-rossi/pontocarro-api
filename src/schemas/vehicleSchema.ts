@@ -15,7 +15,7 @@ export const vehicleSchema = z.object({
     bodyType: z.string().min(1, "Tipo de carroceria é obrigatório"),
     color: z.string().min(1, "Cor é obrigatória").max(50, "Cor muito longa"),
     description: z.string().min(1, "Descrição é obrigatória").max(1000, "Descrição muito longa"),
-    features: z.array(z.string()).max(10, "Máximo de 10 características").optional(),
+    features: z.array(z.string()).max(20, "Máximo de 10 características").optional(),
     images: z.array(z.string()).max(10, "Máximo de 10 fotos").optional(),
     announcerName: z.string().min(3, "Nome do anunciante deve ter no mínimo 3 caracteres").max(100, "Nome do anunciante muito longo"),
     announcerEmail: z.string().min(1, "E-mail do anunciante é obrigatório").max(150, "E-mail do anunciante muito longo").email("E-mail do anunciante inválido"),
