@@ -22,7 +22,12 @@ if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-app.use(cors()); // Use cors middleware
+app.use(cors({
+    origin: [
+        'http://localhost:3000',
+        'https://www.pontocarro.com'
+    ]
+}));
 
 // Serve static files from the 'uploads' directory
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

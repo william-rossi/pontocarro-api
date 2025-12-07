@@ -1,153 +1,51 @@
-# Car Marketplace API
+# PontoCarro API
 
-This is a well-structured Express.js API, built with TypeScript, for a car marketplace. It provides endpoints for public car listings, search, user authentication, and authenticated vehicle management.
-
-## Project Structure
-
-```
-├── src/
-│   ├── config/             # Database configuration
-│   │   └── database.ts
-│   ├── controllers/        # Business logic for routes
-│   │   ├── authController.ts
-│   │   ├── carController.ts
-│   │   └── userController.ts
-│   ├── middleware/         # Express middleware (e.g., authentication)
-│   │   └── authMiddleware.ts
-│   ├── models/             # TypeScript interfaces for data structures
-│   │   ├── Car.ts
-│   │   └── User.ts
-│   ├── routes/             # API route definitions
-│   │   ├── authRoutes.ts
-│   │   ├── carRoutes.ts
-│   │   └── userRoutes.ts
-│   └── app.ts              # Main Express application file
-├── .env.example            # Example environment variables
-├── package.json
-├── tsconfig.json
-└── README.md
-```
+Este é um projeto de API robusto e bem estruturado, desenvolvido com Express.js e TypeScript, projetado para um marketplace de veículos. Ele oferece um conjunto completo de endpoints para listagens públicas de veículos, funcionalidades de busca avançada, autenticação de usuários segura e gerenciamento autenticado de veículos e imagens.
 
 ## Setup
 
-1.  **Clone the repository** (if you haven't already):
+1.  **Clone o repositório** (se você ainda não o fez):
     ```bash
     git clone <repository-url>
     cd pontocarro-API
     ```
 
-2.  **Install dependencies**:
+2.  **Instale as dependências**:
     ```bash
     npm install
     ```
 
-3.  **Database Setup (PostgreSQL)**:
+3.  **Configuração das Variáveis de Ambiente**:
 
-    This application uses PostgreSQL. You'll need to provide your database connection details via environment variables. For local development, create a `.env` file in the project root based on `.env.example`.
+    Crie um arquivo `.env` na raiz do projeto, baseado no `.env.example`, e configure as seguintes variáveis:
 
-    Example `.env` file:
     ```
-    DB_HOST=localhost
-    DB_USER=postgres
-    DB_PASSWORD=password
-    DB_NAME=car_marketplace
-    DB_PORT=5432
+    PORT=3001
+    MONGO_URI=mongodb://localhost:27017/pontocarro_db
     JWT_SECRET=your_super_secret_jwt_key_here
+    GMAIL_ADDRESS=your_email@gmail.com
+    GMAIL_APP_PASSWORD=your_gmail_app_password
+    FRONTEND_DOMAIN=http://localhost:3000
     ```
 
-    *   `DB_HOST`: Your PostgreSQL host (e.g., `localhost` for local, or the host provided by Render).
-    *   `DB_USER`: Your PostgreSQL username.
-    *   `DB_PASSWORD`: Your PostgreSQL password.
-    *   `DB_NAME`: The name of your database (e.g., `car_marketplace`).
-    *   `DB_PORT`: The port for your PostgreSQL database (default is `5432`).
-    *   `JWT_SECRET`: A strong, random string for JWT token signing.
+    *   `PORT`: A porta em que o servidor Express será executado (ex: `3001`).
+    *   `MONGO_URI`: A URI de conexão para o seu banco de dados MongoDB (ex: `mongodb://localhost:27017/pontocarro_db`).
+    *   `JWT_SECRET`: Uma string forte e aleatória para a assinatura dos tokens JWT.
+    *   `GMAIL_ADDRESS`: Seu endereço de e-mail do Gmail para envio de e-mails (ex: recuperação de senha).
+    *   `GMAIL_APP_PASSWORD`: A senha de aplicativo gerada para o seu Gmail. Veja [como gerar uma senha de aplicativo](https://support.google.com/accounts/answer/185833?hl=pt-BR).
+    *   `FRONTEND_DOMAIN`: O domínio do seu aplicativo frontend para configuração de CORS e e-mails de recuperação de senha.
 
-    When deploying to Render, you will configure these environment variables directly in your Render project settings.
+4.  **Execute o servidor**:
 
-4.  **Run the server**:
-
-    *   **Development Mode (with auto-reload)**:
+    *   **Modo de Desenvolvimento (com recarregamento automático)**:
         ```bash
         npm run dev
         ```
 
-    *   **Production Mode (build and run)**:
+    *   **Modo de Produção (compila e executa)**:
         ```bash
         npm run build
         npm start
         ```
 
-    The server will connect to the PostgreSQL database and automatically create the `users` and `cars` tables if they don't exist. It will then start on `http://localhost:3000`.
-
-## API Endpoints
-
-### Public Endpoints
-
-*   **Get all cars**
-    `GET /cars`
-    ```bash
-    curl http://localhost:3000/cars
-    ```
-
-*   **Search cars with filters**
-    `GET /cars/search?make=Honda&model=Civic&year=2020&minPrice=10000&maxPrice=30000`
-    ```bash
-    curl http://localhost:3000/cars/search?make=Honda&model=Civic
-    ```
-
-### User Authentication Endpoints
-
-*   **User Registration**
-    `POST /auth/register`
-    ```bash
-    curl -X POST -H "Content-Type: application/json" -d '{"username": "newuser", "email": "newuser@example.com", "password": "newpassword"}' http://localhost:3000/auth/register
-    ```
-    *   Returns a JWT token upon successful registration.
-
-*   **User Login**
-    `POST /auth/login`
-    ```bash
-    curl -X POST -H "Content-Type: application/json" -d '{"email": "newuser@example.com", "password": "newpassword"}' http://localhost:3000/auth/login
-    ```
-    *   Returns a JWT token upon successful login.
-
-*   **Forgot Password**
-    `POST /auth/forgot-password`
-    ```bash
-    curl -X POST -H "Content-Type: application/json" -d '{"email": "user@example.com"}' http://localhost:3000/auth/forgot-password
-    ```
-
-### Authenticated Endpoints (Requires JWT in `Authorization` header)
-
-To access these endpoints, include the JWT token obtained from login/registration in the `Authorization` header as `Bearer <token>`.
-
-Example (replace `<your_jwt_token>` with the actual token):
-```bash
-Authorization: Bearer <your_jwt_token>
-```
-
-*   **Edit User Profile**
-    `PUT /user/profile`
-    ```bash
-    curl -X PUT -H "Content-Type: application/json" -H "Authorization: Bearer <your_jwt_token>" -d '{"username": "updateduser", "email": "updated@example.com"}' http://localhost:3000/user/profile
-    ```
-
-*   **Publish New Vehicle**
-    `POST /user/vehicles`
-    ```bash
-    curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer <your_jwt_token>" -d '{"make": "Toyota", "model": "Camry", "year": 2020, "price": 22000, "description": "Low mileage, well-maintained."}' http://localhost:3000/user/vehicles
-    ```
-
-*   **Edit Vehicle**
-    `PUT /user/vehicles/:id`
-    (Replace `:id` with a vehicle ID)
-    ```bash
-    curl -X PUT -H "Content-Type: application/json" -H "Authorization: Bearer <your_jwt_token>" -d '{"price": 25000}' http://localhost:3000/user/vehicles/1
-    ```
-
-*   **Delete Vehicle**
-    `DELETE /user/vehicles/:id`
-    (Replace `:id` with a vehicle ID)
-    ```bash
-    curl -X DELETE -H "Authorization: Bearer <your_jwt_token>" http://localhost:3000/user/vehicles/1
-    ```
+    O servidor será iniciado na porta configurada em `PORT` (padrão: `3001`).
