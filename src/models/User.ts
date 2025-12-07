@@ -8,6 +8,8 @@ export interface User extends Document {
     city?: string;
     state?: string;
     refreshToken?: string; // Add refreshToken to the User interface
+    resetPasswordToken?: string; // Add resetPasswordToken
+    resetPasswordExpires?: Date; // Add resetPasswordExpires
     created_at?: Date;
 }
 
@@ -19,6 +21,8 @@ const userSchema = new Schema({
     city: { type: String },
     state: { type: String },
     refreshToken: { type: String }, // Add refreshToken to the schema
+    resetPasswordToken: { type: String }, // Add resetPasswordToken to schema
+    resetPasswordExpires: { type: Date }, // Add resetPasswordExpires to schema
     created_at: { type: Date, default: Date.now }
 });
 

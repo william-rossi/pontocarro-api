@@ -150,7 +150,79 @@
  *               schema:
  *                 $ref: '#/components/schemas/Error'
  *         500:
- *           description: Server error
+ *           description: Erro do servidor
+ */
+
+/**
+ * @swagger
+ * paths:
+ *   /auth/reset-password/{resetToken}:
+ *     post:
+ *       summary: Redefine a senha do usuário
+ *       description: Permite ao usuário redefinir sua senha usando um token de redefinição.
+ *       tags:
+ *         - Auth
+ *       parameters:
+ *         - in: path
+ *           name: resetToken
+ *           required: true
+ *           description: Token de redefinição de senha
+ *           schema:
+ *             type: string
+ *             example: um_token_aleatorio_e_longo
+ *       requestBody:
+ *         required: true
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - password
+ *               properties:
+ *                 password:
+ *                   type: string
+ *                   format: password
+ *                   description: Nova senha do usuário (mínimo 8 caracteres)
+ *                   example: NovaSenha@123
+ *                 confirmPassword:
+ *                   type: string
+ *                   format: password
+ *                   description: Confirmação da nova senha
+ *                   example: NovaSenha@123
+ *       responses:
+ *         200:
+ *           description: Senha redefinida com sucesso
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   message:
+ *                     type: string
+ *                     example: Senha redefinida com sucesso!
+ *         400:
+ *           description: Token inválido ou expirado / Erro de validação
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   message:
+ *                     type: string
+ *                     example: Token de redefinição de senha inválido ou expirado.
+ *                   errors:
+ *                     type: array
+ *                     items:
+ *                       type: object
+ *                       properties:
+ *                         path:
+ *                           type: array
+ *                           items:
+ *                             type: string
+ *                         message:
+ *                           type: string
+ *         500:
+ *           description: Erro do servidor
  *           content:
  *             application/json:
  *               schema:

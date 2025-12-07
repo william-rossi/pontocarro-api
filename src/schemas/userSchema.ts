@@ -27,3 +27,7 @@ export const createUserSchema = z
         state: z.string().min(1, "Campo obrigatório"),
         city: z.string().min(1, "Campo obrigatório")
     })
+
+export const forgotPasswordSchema = z.object({
+    email: z.string().email("E-mail inválido"),
+});
