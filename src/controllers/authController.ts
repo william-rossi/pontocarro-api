@@ -326,7 +326,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
         const mailOptions = {
             to: user.email,
-            from: '.CARRO',
+            from: process.env.GMAIL_ADDRESS,
             subject: '.CARRO: Redefinição de Senha',
             html: `
                 Olá ${user.username || 'usuário'},
