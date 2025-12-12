@@ -5,7 +5,49 @@ import { z } from 'zod'; // Importa zod para erros de validação
 import fs from 'fs';
 import path from 'path';
 import Image from '../models/Image'; // Importa o modelo de Imagem
-import mongoose from 'mongoose'; // Importa mongoose
+import cloudinary from '../config/cloudinary'; // Importa configuração do Cloudinary
+
+const cleanCloudinaryUrl = (url: string, originalPublicId?: string) => {
+    // Se temos o originalPublicId, construímos a URL correta diretamente
+    if (originalPublicId && originalPublicId.includes('vehicles/')) {
+        const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'dw5xqqlvl';
+        // Garante que o publicId tenha extensão .webp (todas as imagens são convertidas para webp)
+        let finalPublicId = originalPublicId;
+        if (!/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(finalPublicId)) {
+            finalPublicId += '.webp';
+        } else if (!finalPublicId.endsWith('.webp')) {
+            // Se tem extensão mas não é webp, substitui por webp
+            finalPublicId = finalPublicId.replace(/\.(jpg|jpeg|png|gif|svg)$/i, '.webp');
+        }
+        return `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/${finalPublicId}`;
+    }
+
+    // Fallback para URLs antigas que podem precisar de correção
+    if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+        return url; // Não é uma URL web, retorna como está
+    }
+
+    try {
+        const parsedUrl = new URL(url);
+        parsedUrl.searchParams.delete('_a');
+        parsedUrl.protocol = 'https:';
+
+        // Remove o segmento '/v1/' ou outras versões se existir
+        parsedUrl.pathname = parsedUrl.pathname.replace(/\/v\d+\//, '/');
+
+        let finalUrl = parsedUrl.toString();
+
+        // Adiciona .jpg se não tiver extensão e se for uma URL do Cloudinary
+        if (finalUrl.includes('res.cloudinary.com') && !/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(finalUrl)) {
+            finalUrl += '.jpg';
+        }
+
+        return finalUrl;
+    } catch (error) {
+        console.warn('Falha ao limpar URL do Cloudinary:', url, error);
+        return url; // Em caso de erro na URL, retorna a original
+    }
+};
 
 // Função auxiliar para remover acentos de uma string
 const stripAccents = (str: string): string => {
@@ -66,7 +108,7 @@ const stripAccents = (str: string): string => {
  *                   example: 42
  *                 firstImageUrl:
  *                   type: string
- *                   example: /uploads/vehicles/some_image.jpg
+ *                   example: https://res.cloudinary.com/your-cloud/image/upload/v1234567890/vehicles/some_image.jpg
  *       500:
  *         description: Erro do servidor
  *         content:
@@ -99,8 +141,8 @@ export const getAllVehicles = async (req: Request, res: Response) => {
 
         // Obtém manualmente as URLs das imagens para firstImageUrl sem popular o array inteiro
         const vehiclesWithFirstImage = await Promise.all(vehicles.map(async (vehicle: any) => {
-            const firstImageDoc = await Image.findOne({ vehicle_id: vehicle._id }).select('imageUrl').lean();
-            const firstImageUrl = firstImageDoc ? firstImageDoc.imageUrl : null;
+            const firstImageDoc = await Image.findOne({ vehicle_id: vehicle._id }).select('imageUrl cloudinaryPublicId').lean();
+            const firstImageUrl = firstImageDoc ? cleanCloudinaryUrl(firstImageDoc.imageUrl, firstImageDoc.cloudinaryPublicId) : null;
 
             const vehicleObject = vehicle.toJSON();
             // O array de imagens não é populado, então não há necessidade de excluí-lo. Ele não estará lá.
@@ -183,7 +225,7 @@ export const getAllVehicles = async (req: Request, res: Response) => {
  *                   example: 42
  *                 firstImageUrl:
  *                   type: string
- *                   example: /uploads/vehicles/some_image.jpg
+ *                   example: https://res.cloudinary.com/your-cloud/image/upload/v1234567890/vehicles/some_image.jpg
  *       401:
  *         description: Não autorizado
  *         content:
@@ -242,10 +284,9 @@ export const getUserVehicles = async (req: Request, res: Response) => {
 
         // Anexa firstImageUrl a cada veículo
         const vehiclesWithFirstImage = await Promise.all(vehicles.map(async (vehicle: any) => {
-            const firstImage = await Image.findOne({ vehicle_id: vehicle._id }).select('imageUrl').lean();
-            // Garante que é um objeto simples, espalhando _doc se existir, caso contrário, espalha o próprio veículo
+            const firstImage = await Image.findOne({ vehicle_id: vehicle._id }).select('imageUrl cloudinaryPublicId').lean();
             const plainVehicle = vehicle._doc ? { ...vehicle._doc } : { ...vehicle };
-            return { ...plainVehicle, firstImageUrl: firstImage ? firstImage.imageUrl : null };
+            return { ...plainVehicle, firstImageUrl: firstImage ? cleanCloudinaryUrl(firstImage.imageUrl, firstImage.cloudinaryPublicId) : null };
         }));
 
         res.status(200).json({
@@ -387,7 +428,7 @@ export const getUserVehicles = async (req: Request, res: Response) => {
  *                   example: 42
  *                 firstImageUrl:
  *                   type: string
- *                   example: /uploads/vehicles/some_image.jpg
+ *                   example: https://res.cloudinary.com/your-cloud/image/upload/v1234567890/vehicles/some_image.jpg
  *       500:
  *         description: Erro do servidor
  *         content:
@@ -502,8 +543,8 @@ export const searchVehicles = async (req: Request, res: Response) => {
             .limit(limit);
 
         const vehiclesWithFirstImage = await Promise.all(filteredVehicles.map(async (vehicle: any) => {
-            const firstImageDoc = await Image.findOne({ vehicle_id: vehicle._id }).select('imageUrl').lean();
-            const firstImageUrl = firstImageDoc ? firstImageDoc.imageUrl : null;
+            const firstImageDoc = await Image.findOne({ vehicle_id: vehicle._id }).select('imageUrl cloudinaryPublicId').lean();
+            const firstImageUrl = firstImageDoc ? cleanCloudinaryUrl(firstImageDoc.imageUrl, firstImageDoc.cloudinaryPublicId) : null;
 
             const vehicleObject = vehicle.toJSON();
             // O array de imagens não é populado, então não há necessidade de excluí-lo. Ele não estará lá.
@@ -931,15 +972,6 @@ export const updateVehicle = async (req: Request, res: Response) => {
 
         await vehicle.save();
 
-        // Após salvar, verifica se o veículo possui alguma imagem.
-        // Se não, e for um cenário de atualização, devemos impedi-lo ou retornar um erro.
-        const currentImagesCount = await Image.countDocuments({ vehicle_id: vehicle._id });
-        if (currentImagesCount === 0) {
-            // Opcionalmente, você pode querer reverter o vehicle.save() aqui se este for um requisito crítico.
-            // Por enquanto, apenas retornaremos um erro e esperamos que o frontend lide com os uploads de imagens separadamente.
-            return res.status(400).json({ message: 'Um veículo deve ter pelo menos uma imagem.' });
-        }
-
         res.status(200).json({ message: 'Veículo atualizado com sucesso', vehicle });
     } catch (err: any) {
         if (err instanceof z.ZodError) {
@@ -978,7 +1010,7 @@ export const updateVehicle = async (req: Request, res: Response) => {
  *                   type: string
  *                   format: binary
  *                 maxItems: 10
- *                 description: Até 10 arquivos de imagem (jpeg, jpg, png, gif)
+ *                 description: Até 10 arquivos de imagem (jpeg, jpg, png, gif, webp)
  *     responses:
  *       200:
  *         description: Imagens carregadas com sucesso
@@ -989,14 +1021,19 @@ export const updateVehicle = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Imagens carregadas com sucesso
+ *                   example: Images uploaded successfully
  *                 images:
  *                   type: array
  *                   items:
  *                     type: string
- *                   example: ["/uploads/vehicles/image1.jpg", "/uploads/vehicles/image2.png"]
+ *                   example: ["https://res.cloudinary.com/your-cloud/image/upload/q_auto,f_auto/v1234567890/vehicles/uuid.webp"]
+ *                 imageIds:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["uuid-1", "uuid-2"]
  *       400:
- *         description: Nenhum arquivo fornecido ou tipo de arquivo inválido
+ *         description: Nenhum arquivo fornecido ou limite excedido
  *         content:
  *           application/json:
  *             schema:
@@ -1004,9 +1041,9 @@ export const updateVehicle = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Nenhum arquivo de imagem fornecido
+ *                   example: Cannot upload more than 10 images. You already have 5 images.
  *       404:
- *         description: Veículo não encontrado ou permissão negada
+ *         description: Veículo não encontrado ou sem permissão
  *         content:
  *           application/json:
  *             schema:
@@ -1014,50 +1051,18 @@ export const updateVehicle = async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Veículo não encontrado ou você não tem permissão para carregar imagens para este veículo
+ *                   example: Vehicle not found or you do not have permission to upload images for this vehicle
  *       500:
  *         description: Erro do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Error uploading images
  */
-export const uploadImages = async (req: Request, res: Response) => {
-    try {
-        if (!req.files || (req.files as Express.Multer.File[]).length === 0) {
-            return res.status(400).json({ message: 'No image files provided' });
-        }
-
-        const vehicleId = req.params.id;
-        const ownerId = req.userId; // Usa req.userId conforme definido pelo middleware de autenticação
-
-        // Verifica se o veículo existe e pertence ao usuário
-        const vehicle = await Vehicle.findOne({ _id: vehicleId, owner_id: ownerId });
-
-        if (!vehicle) {
-            return res.status(404).json({ message: 'Vehicle not found or you do not have permission to upload images for this vehicle' });
-        }
-
-        const imageUrls = (req.files as Express.Multer.File[]).map(file => `/uploads/vehicles/${file.filename}`);
-
-        // Aplica o limite de 10 imagens
-        if ((vehicle.images?.length || 0) + imageUrls.length > 10) {
-            // Limpa os arquivos recém-carregados se o limite for excedido
-            imageUrls.forEach(url => {
-                const filePath = path.join(__dirname, '../../uploads/vehicles', path.basename(url));
-                if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath);
-                }
-            });
-            return res.status(400).json({ message: `Não é possível carregar mais de 10 imagens. Você já tem ${vehicle.images?.length || 0} imagens.` });
-        }
-
-        // Adiciona as novas URLs das imagens ao array de imagens do veículo
-        vehicle.images = [...(vehicle.images || []), ...imageUrls];
-        await vehicle.save();
-
-        res.status(200).json({ message: 'Imagens carregadas com sucesso', images: imageUrls });
-    } catch (err: any) {
-        console.error(err);
-        res.status(500).json({ message: 'Erro ao carregar imagens', error: err.message });
-    }
-};
 
 /**
  * @swagger
@@ -1122,12 +1127,6 @@ export const deleteImage = async (req: Request, res: Response) => {
             fs.unlinkSync(imagePath);
         } else {
             return res.status(404).json({ message: 'Image not found on filesystem' });
-        }
-
-        // Remove a URL da imagem do array de imagens do veículo
-        if (vehicle.images) {
-            vehicle.images = vehicle.images.filter(img => path.basename(img) !== imageName);
-            await vehicle.save();
         }
 
         res.status(200).json({ message: 'Image deleted successfully' });
@@ -1201,13 +1200,14 @@ export const deleteVehicle = async (req: Request, res: Response) => {
         // 1. Encontra todas as imagens associadas ao veículo
         const imagesToDelete = await Image.find({ vehicle_id: id });
 
-        // 2. Para cada imagem associada, exclui o arquivo físico do sistema de arquivos
+        // 2. Para cada imagem associada, exclui do Cloudinary se existir um public_id
         for (const image of imagesToDelete) {
-            const filePath = path.join(__dirname, '../../uploads/vehicles', path.basename(image.imageUrl));
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            } else {
-                console.warn(`Arquivo não encontrado no sistema de arquivos, mas presente no DB: ${filePath}`);
+            if (image.cloudinaryPublicId) {
+                try {
+                    await cloudinary.uploader.destroy(image.cloudinaryPublicId);
+                } catch (cloudinaryError) {
+                    console.warn(`Erro ao excluir imagem do Cloudinary: ${image.cloudinaryPublicId}`, cloudinaryError);
+                }
             }
         }
 
@@ -1272,7 +1272,6 @@ export const getVehicleById = async (req: Request, res: Response) => {
         }
 
         const vehicleObject = vehicle.toJSON();
-        delete vehicleObject.images; // Remove o array de imagens
 
         res.status(200).json(vehicleObject);
     } catch (err: any) {

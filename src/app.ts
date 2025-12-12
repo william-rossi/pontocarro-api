@@ -1,8 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors'; // Importa o pacote cors para lidar com requisições de diferentes origens
-import fs from 'fs'; // Importa o módulo fs para operações de sistema de arquivos
-import path from 'path'; // Importa o módulo path para lidar com caminhos de arquivos e diretórios
 import { initializeDatabase } from './config/database';
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
@@ -16,21 +14,12 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Cria o diretório de uploads se ele não existir
-const uploadDir = path.join(__dirname, '../uploads/vehicles');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
 app.use(cors({
     origin: [
         'http://localhost:3000',
         'https://pontocarro.com'
     ]
 }));
-
-// Serve arquivos estáticos do diretório 'uploads'
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Definição do Swagger
 const swaggerOptions = {
@@ -66,7 +55,7 @@ const swaggerDocs = swaggerJsdoc(swaggerOptions);
 initializeDatabase();
 
 // Usa o Swagger UI
-app.use('/swagger', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+app.use('/swagger', swaggerUi.serve, swaggerUi.setup(swaggerDocs, { explorer: true, swaggerOptions: { persistAuthorization: true } }));
 
 // Usa as rotas
 app.use('/auth', authRoutes);

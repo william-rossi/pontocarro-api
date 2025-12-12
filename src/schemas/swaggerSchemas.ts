@@ -27,7 +27,7 @@
  *         announcerEmail: { type: 'string', format: 'email', example: 'joao.silva@example.com' }
  *         announcerPhone: { type: 'string', example: '+55 (11) 98765-4321' }
  *         created_at: { type: 'string', format: 'date-time' }
- *         firstImageUrl: { type: 'string', example: '/uploads/vehicles/some_image.jpg' }
+ *         firstImageUrl: { type: 'string', example: 'https://res.cloudinary.com/your-cloud/image/upload/v1234567890/vehicles/some_image.jpg' }
  *     User:
  *       type: object
  *       properties:
@@ -42,7 +42,7 @@
  *       properties:
  *         _id: { type: 'string', example: 'ebe235d8-753f-40e3-9ecd-4aab6f389c5d' }
  *         vehicle_id: { type: 'string', example: '60f...' }
- *         imageUrl: { type: 'string', example: '/uploads/vehicles/image1.jpg' }
+ *         imageUrl: { type: 'string', example: 'https://res.cloudinary.com/your-cloud/image/upload/v1234567890/vehicles/image1.jpg' }
  *         created_at: { type: 'string', format: 'date-time' }
  *     Error:
  *       type: object

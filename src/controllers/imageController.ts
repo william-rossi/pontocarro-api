@@ -1,10 +1,40 @@
 import { Request, Response } from 'express';
 import Image from '../models/Image';
 import Vehicle from '../models/Vehicle';
-import path from 'path';
-import fs from 'fs';
-import sharp from 'sharp'; // Importa sharp para processamento de imagem
+import cloudinary from '../config/cloudinary';
 import { v4 as uuidv4 } from 'uuid'; // Para gerar nomes de arquivo únicos
+
+const cleanCloudinaryUrl = (url: string, originalPublicId?: string) => {
+    // Se temos o originalPublicId, construímos a URL correta diretamente
+    if (originalPublicId && originalPublicId.includes('vehicles/')) {
+        const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'dw5xqqlvl';
+        // Mantém o publicId como está (sem forçar webp por enquanto)
+        return `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/${originalPublicId}`;
+    }
+
+    // Fallback para URLs antigas que podem precisar de correção
+    if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+        return url; // Não é uma URL web, retorna como está
+    }
+
+    try {
+        const parsedUrl = new URL(url);
+        parsedUrl.searchParams.delete('_a');
+        parsedUrl.protocol = 'https:';
+
+        // Remove o segmento '/v1/' ou outras versões se existir
+        parsedUrl.pathname = parsedUrl.pathname.replace(/\/v\d+\//, '/');
+
+        let finalUrl = parsedUrl.toString();
+
+        // Mantém a URL como está (não adiciona extensão automaticamente)
+
+        return finalUrl;
+    } catch (error) {
+        console.warn('Falha ao limpar URL do Cloudinary:', url, error);
+        return url; // Em caso de erro na URL, retorna a original
+    }
+};
 
 export const uploadImages = async (req: Request, res: Response) => {
     try {
@@ -15,12 +45,19 @@ export const uploadImages = async (req: Request, res: Response) => {
         const vehicleId = req.params.id;
         const ownerId = req.userId; // Usa req.userId conforme definido pelo middleware de autenticação
 
+        if (!vehicleId || vehicleId.trim() === '') {
+            return res.status(400).json({ message: 'Invalid vehicle ID' });
+        }
+
         // Verifica se o veículo existe e pertence ao usuário
+        console.log('Checking vehicle with ID:', vehicleId, 'and ownerId:', ownerId);
         const vehicle = await Vehicle.findOne({ _id: vehicleId, owner_id: ownerId });
 
         if (!vehicle) {
+            console.log('Vehicle not found for upload');
             return res.status(404).json({ message: 'Vehicle not found or you do not have permission to upload images for this vehicle' });
         }
+        console.log('Vehicle found, proceeding with upload');
 
         const newImageFiles = req.files as Express.Multer.File[];
 
@@ -34,29 +71,38 @@ export const uploadImages = async (req: Request, res: Response) => {
         const imageIds: string[] = [];
 
         for (const file of newImageFiles) {
-            const uniqueFilename = `${uuidv4()}.webp`; // Usa WebP para melhor compressão
-            const outputPath = path.join(__dirname, '../../uploads/vehicles', uniqueFilename);
+            // Gera um ID público único para o Cloudinary, usando webp como formato
+            const publicIdWithFolder = `vehicles/${vehicleId}/${uuidv4()}`;
+            console.log('Uploading image with publicId:', publicIdWithFolder);
 
-            await sharp(file.buffer)
-                .resize(1920, undefined, { // Redimensiona para largura máxima de 1920px, altura automática
-                    withoutEnlargement: true // Não amplia imagens menores que 1920px
-                })
-                .webp({ quality: 80 }) // Comprime para WebP com qualidade de 80%
-                .toFile(outputPath);
+            // Upload para Cloudinary com otimização automática
+            const uploadResult = await cloudinary.uploader.upload(
+                `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
+                {
+                    public_id: publicIdWithFolder, // Public ID com pasta vehicles/
+                    quality: 'auto', // Otimização automática do Cloudinary
+                    width: 1920, // Redimensionamento automático (máximo 1920px de largura)
+                    height: 1920,
+                    crop: 'limit'
+                }
+            );
 
-            const imageUrl = `/uploads/vehicles/${uniqueFilename}`;
+            // Usa o public_id retornado pelo Cloudinary (já inclui a pasta vehicles/)
+            const finalPublicId = uploadResult.public_id;
+
+            // A URL otimizada usa o public_id retornado
+            const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+            const optimizedUrl = `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/${finalPublicId}`;
+
             const newImage = new Image({
                 vehicle_id: vehicleId,
-                imageUrl: imageUrl,
+                imageUrl: optimizedUrl,
+                cloudinaryPublicId: finalPublicId // Armazenar o public_id completo com extensão
             });
             const savedImage = await newImage.save();
-            imageUrls.push(imageUrl);
+            imageUrls.push(optimizedUrl);
             imageIds.push(savedImage._id.toString());
         }
-
-        // Adiciona novos IDs de imagem ao array de imagens do veículo
-        vehicle.images = [...(vehicle.images || []), ...imageIds];
-        await vehicle.save();
 
         res.status(200).json({ message: 'Images uploaded successfully', images: imageUrls, imageIds: imageIds });
 
@@ -110,7 +156,12 @@ export const getImagesByVehicleId = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'No images found for this vehicle.' });
         }
 
-        res.status(200).json(images);
+        res.status(200).json(images.map(image => {
+            const imageObject = image.toJSON();
+            const cleanedImageUrl = cleanCloudinaryUrl(imageObject.imageUrl, imageObject.cloudinaryPublicId);
+            delete imageObject.cloudinaryPublicId; // Remove a propriedade do retorno JSON
+            return { ...imageObject, imageUrl: cleanedImageUrl };
+        }));
     } catch (err: any) {
         console.error(err);
         res.status(500).json({ message: 'Error fetching images', error: err.message });
@@ -159,7 +210,10 @@ export const getFirstImageByVehicleId = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'No images found for this vehicle.' });
         }
 
-        res.status(200).json(image);
+        const imageObject = image.toJSON();
+        const cleanedImageUrl = cleanCloudinaryUrl(imageObject.imageUrl, imageObject.cloudinaryPublicId);
+        delete imageObject.cloudinaryPublicId; // Remove a propriedade do retorno JSON
+        res.status(200).json({ ...imageObject, imageUrl: cleanedImageUrl });
     } catch (err: any) {
         console.error(err);
         res.status(500).json({ message: 'Error fetching first image', error: err.message });
@@ -208,7 +262,10 @@ export const getImageById = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Image not found.' });
         }
 
-        res.status(200).json(image);
+        const imageObject = image.toJSON();
+        const cleanedImageUrl = cleanCloudinaryUrl(imageObject.imageUrl, imageObject.cloudinaryPublicId);
+        delete imageObject.cloudinaryPublicId; // Remove a propriedade do retorno JSON
+        res.status(200).json({ ...imageObject, imageUrl: cleanedImageUrl });
     } catch (err: any) {
         console.error(err);
         res.status(500).json({ message: 'Error fetching image', error: err.message });
@@ -234,23 +291,13 @@ export const deleteImage = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Image not found for this vehicle.' });
         }
 
-        // Exclui o arquivo do sistema de arquivos
-        const filename = path.basename(imageToDelete.imageUrl);
-        const filePath = path.join(__dirname, '../../uploads/vehicles', filename);
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-        } else {
-            console.warn(`Arquivo não encontrado no sistema de arquivos, mas presente no DB: ${filePath}`);
+        // Exclui a imagem do Cloudinary se existir um public_id
+        if (imageToDelete.cloudinaryPublicId) {
+            await cloudinary.uploader.destroy(imageToDelete.cloudinaryPublicId);
         }
 
         // Remove a imagem do banco de dados
         await Image.deleteOne({ _id: imageId });
-
-        // Remove o ID da imagem do array de imagens do veículo
-        if (vehicle.images) {
-            vehicle.images = vehicle.images.filter(img => img.toString() !== imageId);
-            await vehicle.save();
-        }
 
         res.status(200).json({ message: 'Image deleted successfully' });
     } catch (err: any) {

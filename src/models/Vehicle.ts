@@ -18,7 +18,6 @@ export interface Vehicle extends Document {
     color: string;
     description: string;
     features?: string[];
-    images?: string[]; // Change this to refer to Image IDs
     announcerName: string;
     announcerEmail: string;
     announcerPhone: string;
@@ -43,7 +42,6 @@ const vehicleSchema = new Schema({
     color: { type: String, required: true },
     description: { type: String, required: true },
     features: { type: [String] },
-    images: [{ type: String, ref: 'Image' }], // Updated to reference Image model
     announcerName: { type: String, required: true },
     announcerEmail: { type: String, required: true },
     announcerPhone: { type: String, required: true },
