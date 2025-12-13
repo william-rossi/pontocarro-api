@@ -6,9 +6,9 @@ import { v4 as uuidv4 } from 'uuid'; // Para gerar nomes de arquivo únicos
 
 const cleanCloudinaryUrl = (url: string, originalPublicId?: string) => {
     // Se temos o originalPublicId, construímos a URL correta diretamente
-    if (originalPublicId && originalPublicId.includes('vehicles/')) {
+    if (originalPublicId) {
         const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'dw5xqqlvl';
-        // Mantém o publicId como está (sem forçar webp por enquanto)
+        // O originalPublicId retornado pelo Cloudinary já está correto
         return `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/${originalPublicId}`;
     }
 
@@ -25,11 +25,7 @@ const cleanCloudinaryUrl = (url: string, originalPublicId?: string) => {
         // Remove o segmento '/v1/' ou outras versões se existir
         parsedUrl.pathname = parsedUrl.pathname.replace(/\/v\d+\//, '/');
 
-        let finalUrl = parsedUrl.toString();
-
-        // Mantém a URL como está (não adiciona extensão automaticamente)
-
-        return finalUrl;
+        return parsedUrl.toString();
     } catch (error) {
         console.warn('Falha ao limpar URL do Cloudinary:', url, error);
         return url; // Em caso de erro na URL, retorna a original
@@ -71,15 +67,19 @@ export const uploadImages = async (req: Request, res: Response) => {
         const imageIds: string[] = [];
 
         for (const file of newImageFiles) {
-            // Gera um ID público único para o Cloudinary, usando webp como formato
-            const publicIdWithFolder = `vehicles/${vehicleId}/${uuidv4()}`;
-            console.log('Uploading image with publicId:', publicIdWithFolder);
+            // Gera um ID público único para o Cloudinary (sem incluir pasta no public_id)
+            const uniqueId = uuidv4();
+            console.log('Uploading image with asset_folder: vehicles/' + vehicleId + ', public_id:', uniqueId);
 
-            // Upload para Cloudinary com otimização automática
+            // Upload para Cloudinary usando asset_folder (Dynamic Folder Mode)
+            console.log('Uploading to asset_folder: vehicles/' + vehicleId + ', public_id:', uniqueId);
+
             const uploadResult = await cloudinary.uploader.upload(
                 `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
                 {
-                    public_id: publicIdWithFolder, // Public ID com pasta vehicles/
+                    public_id: uniqueId, // Apenas o ID único
+                    asset_folder: `vehicles/${vehicleId}`, // Pasta de armazenamento
+                    use_asset_folder_as_public_id_prefix: true, // Inclui pasta na URL
                     quality: 'auto', // Otimização automática do Cloudinary
                     width: 1920, // Redimensionamento automático (máximo 1920px de largura)
                     height: 1920,
@@ -87,17 +87,22 @@ export const uploadImages = async (req: Request, res: Response) => {
                 }
             );
 
-            // Usa o public_id retornado pelo Cloudinary (já inclui a pasta vehicles/)
-            const finalPublicId = uploadResult.public_id;
+            console.log('Upload result public_id:', uploadResult.public_id);
+            console.log('Upload result secure_url:', uploadResult.secure_url);
 
-            // A URL otimizada usa o public_id retornado
+            // Se use_asset_folder_as_public_id_prefix não funcionou, construir manualmente
+            const finalPublicId = uploadResult.public_id.includes('vehicles/')
+                ? uploadResult.public_id
+                : `vehicles/${vehicleId}/${uploadResult.public_id}`;
+
+            // Construir URL com a pasta incluída
             const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
             const optimizedUrl = `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/${finalPublicId}`;
 
             const newImage = new Image({
                 vehicle_id: vehicleId,
                 imageUrl: optimizedUrl,
-                cloudinaryPublicId: finalPublicId // Armazenar o public_id completo com extensão
+                cloudinaryPublicId: finalPublicId // Armazenar o public_id completo retornado pelo Cloudinary
             });
             const savedImage = await newImage.save();
             imageUrls.push(optimizedUrl);

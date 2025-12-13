@@ -1265,7 +1265,7 @@ export const deleteVehicle = async (req: Request, res: Response) => {
 export const getVehicleById = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const vehicle = await Vehicle.findById(id).populate({ path: 'images', select: 'imageUrl' });
+        const vehicle = await Vehicle.findById(id);
 
         if (!vehicle) {
             return res.status(404).json({ message: 'Vehicle not found' });
