@@ -35,27 +35,6 @@ Este é um projeto de API robusto e bem estruturado, desenvolvido com Express.js
     *   `GMAIL_APP_PASSWORD`: A senha de aplicativo gerada para o seu Gmail. Veja [como gerar uma senha de aplicativo](https://support.google.com/accounts/answer/185833?hl=pt-BR).
     *   `FRONTEND_DOMAIN`: O domínio do seu aplicativo frontend para configuração de CORS e e-mails de recuperação de senha.
 
-    ### Configuração do Gmail SMTP
-
-    Para que o envio de e-mails funcione corretamente, siga estes passos:
-
-    1. **Ative a autenticação de 2 fatores** na sua conta Google
-    2. **Gere uma senha de aplicativo**:
-       - Acesse [Google Account Settings](https://myaccount.google.com/)
-       - Vá para "Segurança" → "Fazer login no Google" → "Senhas de app"
-       - Selecione "Mail" e "Outro (nome personalizado)"
-       - Copie a senha gerada (16 caracteres)
-    3. **Configure as variáveis de ambiente**:
-       ```
-       GMAIL_ADDRESS=seuemail@gmail.com
-       GMAIL_APP_PASSWORD=abcd-efgh-ijkl-mnop
-       FRONTEND_DOMAIN=https://seudominio.com
-       ```
-    **Nota**: O Gmail pode bloquear envios suspeitos. Se receber erros, verifique:
-    - A conta não está bloqueada
-    - A senha de app está correta
-    - Não há limite de envio excedido
-
 4.  **Execute o servidor**:
 
     *   **Modo de Desenvolvimento (com recarregamento automático)**:
