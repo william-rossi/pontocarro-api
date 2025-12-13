@@ -9,28 +9,16 @@ if (!process.env.GMAIL_ADDRESS || !process.env.GMAIL_APP_PASSWORD) {
 }
 
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: {
         user: process.env.GMAIL_ADDRESS,
-        pass: process.env.GMAIL_APP_PASSWORD, // Use uma variável de ambiente para a senha do aplicativo
+        pass: process.env.GMAIL_APP_PASSWORD,
     },
-    // Configurações corretas para Gmail SMTP
-    secure: false, // false para STARTTLS (porta 587), true para SSL (porta 465)
-    port: 587, // Porta 587 para STARTTLS
     tls: {
-        ciphers: 'SSLv3',
         rejectUnauthorized: false
-    },
-    // Configurações de pool e timeout
-    pool: true,
-    maxConnections: 1, // Reduzido para evitar bloqueios
-    maxMessages: 5,
-    rateLimit: 100, // Máximo 100 emails por hora
-    rateDelta: 1000 * 60 * 60, // 1 hora
-    // Timeouts
-    connectionTimeout: 60000, // 60 segundos
-    greetingTimeout: 30000, // 30 segundos
-    socketTimeout: 60000, // 60 segundos
+    }
 });
 
 // Verificar se o transporter está funcionando (apenas em desenvolvimento)
