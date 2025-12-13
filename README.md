@@ -35,6 +35,27 @@ Este é um projeto de API robusto e bem estruturado, desenvolvido com Express.js
     *   `GMAIL_APP_PASSWORD`: A senha de aplicativo gerada para o seu Gmail. Veja [como gerar uma senha de aplicativo](https://support.google.com/accounts/answer/185833?hl=pt-BR).
     *   `FRONTEND_DOMAIN`: O domínio do seu aplicativo frontend para configuração de CORS e e-mails de recuperação de senha.
 
+    ### Configuração do Gmail SMTP
+
+    Para que o envio de e-mails funcione corretamente, siga estes passos:
+
+    1. **Ative a autenticação de 2 fatores** na sua conta Google
+    2. **Gere uma senha de aplicativo**:
+       - Acesse [Google Account Settings](https://myaccount.google.com/)
+       - Vá para "Segurança" → "Fazer login no Google" → "Senhas de app"
+       - Selecione "Mail" e "Outro (nome personalizado)"
+       - Copie a senha gerada (16 caracteres)
+    3. **Configure as variáveis de ambiente**:
+       ```
+       GMAIL_ADDRESS=seuemail@gmail.com
+       GMAIL_APP_PASSWORD=abcd-efgh-ijkl-mnop
+       FRONTEND_DOMAIN=https://seudominio.com
+       ```
+    **Nota**: O Gmail pode bloquear envios suspeitos. Se receber erros, verifique:
+    - A conta não está bloqueada
+    - A senha de app está correta
+    - Não há limite de envio excedido
+
 4.  **Execute o servidor**:
 
     *   **Modo de Desenvolvimento (com recarregamento automático)**:
@@ -238,6 +259,32 @@ npm run test:coverage # Executa testes com relatório de cobertura
 ## Licença
 
 Este projeto está sob a licença ISC. Veja o arquivo `LICENSE` para mais detalhes.
+
+## Troubleshooting
+
+### Problemas Comuns com Envio de E-mails
+
+#### Erro: "Connection timeout" ou "ETIMEDOUT"
+- **Causa**: Problemas de conectividade com o servidor SMTP do Gmail
+- **Soluções**:
+  - Verifique se as variáveis `GMAIL_ADDRESS` e `GMAIL_APP_PASSWORD` estão corretas
+  - Confirme que a autenticação 2FA está ativada e a senha de app foi gerada corretamente
+  - Teste a conectividade: `GET /auth/test-email` (desenvolvimento)
+  - Verifique se há restrições de firewall/rede no ambiente de produção
+
+#### Erro: "Authentication failed" ou "EAUTH"
+- **Causa**: Credenciais incorretas ou conta bloqueada
+- **Soluções**:
+  - Regere a senha de aplicativo no Google Account
+  - Verifique se a conta Gmail não está suspensa ou com restrições
+  - Confirme que está usando a senha de app, não a senha normal
+
+#### Erro: "Mail rejected" ou "EENVELOPE"
+- **Causa**: Gmail rejeitou o envio por suspeita de spam
+- **Soluções**:
+  - Aguarde alguns minutos antes de tentar novamente
+  - Verifique se o endereço de destino é válido
+  - Evite envios em massa ou repetitivos
 
 ## Suporte
 

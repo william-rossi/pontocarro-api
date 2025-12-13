@@ -98,8 +98,10 @@ export const loginUser = async (req: Request, res: Response) => {
 
 export const forgotPassword = async (req: Request, res: Response) => {
     try {
+        // Validação do email
         const { email } = forgotPasswordSchema.parse(req.body);
 
+        // Busca do usuário
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(404).json({ message: 'Usuário não encontrado' });
@@ -109,9 +111,23 @@ export const forgotPassword = async (req: Request, res: Response) => {
         const resetToken = crypto.randomBytes(20).toString('hex');
         user.resetPasswordToken = resetToken;
         user.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hora
+
+        // Salva o usuário com o token
         await user.save();
 
+        // Verifica se FRONTEND_DOMAIN está configurado
+        if (!process.env.FRONTEND_DOMAIN) {
+            console.error('FRONTEND_DOMAIN não configurado');
+            return res.status(500).json({ message: 'Configuração do servidor incompleta' });
+        }
+
         const resetUrl = `${process.env.FRONTEND_DOMAIN}/redefinir-senha/${resetToken}`;
+
+        // Verifica se GMAIL_ADDRESS está configurado
+        if (!process.env.GMAIL_ADDRESS) {
+            console.error('GMAIL_ADDRESS não configurado');
+            return res.status(500).json({ message: 'Configuração de email incompleta' });
+        }
 
         const mailOptions = {
             to: user.email,
@@ -128,12 +144,60 @@ export const forgotPassword = async (req: Request, res: Response) => {
             `,
         };
 
-        await transporter.sendMail(mailOptions);
+        // Tenta enviar o email com retry e timeout
+        let emailSent = false;
+        let lastError: any = null;
+
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                console.log(`Tentativa ${attempt} de envio de email para ${user.email}`);
+                await transporter.sendMail(mailOptions);
+                emailSent = true;
+                console.log(`Email enviado com sucesso na tentativa ${attempt}`);
+                break;
+            } catch (emailError: any) {
+                console.error(`Erro na tentativa ${attempt} ao enviar email:`, emailError);
+                lastError = emailError;
+
+                // Se for erro de autenticação, não tentar novamente
+                if (emailError.code === 'EAUTH' || emailError.code === 'EENVELOPE') {
+                    break;
+                }
+
+                // Esperar antes de tentar novamente (exceto na última tentativa)
+                if (attempt < 3) {
+                    await new Promise(resolve => setTimeout(resolve, 2000 * attempt)); // Espera crescente
+                }
+            }
+        }
+
+        if (!emailSent) {
+            // Limpa o token se o email falhar
+            user.resetPasswordToken = undefined;
+            user.resetPasswordExpires = undefined;
+            await user.save();
+
+            // Retorna erro específico baseado no tipo de erro
+            if (lastError.code === 'EAUTH') {
+                return res.status(500).json({ message: 'Erro de autenticação no serviço de email. Verifique as credenciais.' });
+            } else if (lastError.code === 'ECONNREFUSED' || lastError.code === 'ETIMEDOUT') {
+                return res.status(500).json({ message: 'Não foi possível conectar ao serviço de email. Tente novamente mais tarde.' });
+            } else if (lastError.code === 'EENVELOPE') {
+                return res.status(500).json({ message: 'Endereço de email inválido ou rejeitado pelo servidor.' });
+            } else {
+                return res.status(500).json({ message: 'Erro ao enviar e-mail de redefinição de senha. Tente novamente mais tarde.' });
+            }
+        }
 
         res.status(200).json({ message: 'Instruções de redefinição de senha enviadas para o seu e-mail' });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Erro do servidor ao enviar e-mail de redefinição de senha' });
+    } catch (err: any) {
+        console.error('Erro no forgotPassword:', err);
+
+        if (err instanceof z.ZodError) {
+            return res.status(400).json({ message: 'Erro de validação', errors: err.issues });
+        }
+
+        res.status(500).json({ message: 'Erro do servidor ao processar solicitação de redefinição de senha' });
     }
 };
 
