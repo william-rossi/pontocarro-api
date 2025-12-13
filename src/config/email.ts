@@ -21,15 +21,4 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// Verificar se o transporter está funcionando (apenas em desenvolvimento)
-if (process.env.NODE_ENV !== 'production') {
-    transporter.verify((error, success) => {
-        if (error) {
-            console.error('Erro na configuração do transporter:', error);
-        } else {
-            console.log('Transporter configurado com sucesso');
-        }
-    });
-}
-
 export default transporter;
