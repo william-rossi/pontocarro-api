@@ -1197,21 +1197,29 @@ export const deleteVehicle = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Vehicle not found or you do not have permission to delete this vehicle' });
         }
 
-        // 1. Encontra todas as imagens associadas ao veículo
-        const imagesToDelete = await Image.find({ vehicle_id: id });
+        // 1. Exclui todas as imagens da pasta do veículo no Cloudinary
+        if (id && id.trim() !== '') {
+            const folderPath = `vehicles/${id}`;
+            try {
+                console.log(`Excluindo todas as imagens da pasta: ${folderPath}`);
+                // Exclui todas as imagens que começam com o prefixo da pasta
+                const deleteResult = await cloudinary.api.delete_resources_by_prefix(`${folderPath}/`);
+                console.log('Imagens excluídas do Cloudinary:', deleteResult);
 
-        // 2. Para cada imagem associada, exclui do Cloudinary se existir um public_id
-        for (const image of imagesToDelete) {
-            if (image.cloudinaryPublicId) {
+                // Tenta excluir a pasta vazia (se existir)
                 try {
-                    await cloudinary.uploader.destroy(image.cloudinaryPublicId);
-                } catch (cloudinaryError) {
-                    console.warn(`Erro ao excluir imagem do Cloudinary: ${image.cloudinaryPublicId}`, cloudinaryError);
+                    await cloudinary.api.delete_folder(folderPath);
+                    console.log(`Pasta excluída: ${folderPath}`);
+                } catch (folderError: any) {
+                    // Ignora erro se a pasta não existir ou não estiver vazia
+                    console.log(`Pasta ${folderPath} não pôde ser excluída (pode não existir ou não estar vazia):`, folderError.message);
                 }
+            } catch (cloudinaryError: any) {
+                console.warn(`Erro ao excluir imagens/pasta do Cloudinary para veículo ${id}:`, cloudinaryError.message);
             }
         }
 
-        // 3. Exclui os registros de imagem da coleção Image no banco de dados
+        // 2. Exclui os registros de imagem da coleção Image no banco de dados
         await Image.deleteMany({ vehicle_id: id });
 
         // 4. Exclui o registro do veículo da coleção Vehicle no banco de dados
