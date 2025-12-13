@@ -8,12 +8,8 @@ import userRoutes from './routes/userRoutes';
 import vehicleRoutes from './routes/vehicleRoutes';
 import imageRoutes from './routes/imageRoutes';
 import { openApiSpec } from './schemas/scalarSchema';
-import configureCloudinary from './config/cloudinary';
 
 dotenv.config();
-
-// Configurar Cloudinary após carregar as variáveis de ambiente
-configureCloudinary();
 
 const app = express();
 const PORT = process.env.PORT || 3001;

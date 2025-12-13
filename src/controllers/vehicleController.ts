@@ -424,11 +424,11 @@ export const deleteVehicle = async (req: Request, res: Response) => {
             const folderPath = `vehicles/${id}`;
             try {
                 // Exclui todas as imagens que começam com o prefixo da pasta
-                await cloudinary().api.delete_resources_by_prefix(`${folderPath}/`);
+                await cloudinary.api.delete_resources_by_prefix(`${folderPath}/`);
 
                 // Tenta excluir a pasta vazia (se existir)
                 try {
-                    await cloudinary().api.delete_folder(folderPath);
+                    await cloudinary.api.delete_folder(folderPath);
                 } catch (folderError: any) {
                     // Ignora erro se a pasta não existir ou não estiver vazia
                 }

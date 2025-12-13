@@ -66,7 +66,7 @@ export const uploadImages = async (req: Request, res: Response) => {
 
             // Upload para Cloudinary usando asset_folder (Dynamic Folder Mode)
 
-            const uploadResult = await cloudinary().uploader.upload(
+            const uploadResult = await cloudinary.uploader.upload(
                 `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
                 {
                     public_id: uniqueId, // Apenas o ID único
@@ -186,7 +186,7 @@ export const deleteImage = async (req: Request, res: Response) => {
 
         // Exclui a imagem do Cloudinary se existir um public_id
         if (imageToDelete.cloudinaryPublicId) {
-            await cloudinary().uploader.destroy(imageToDelete.cloudinaryPublicId);
+            await cloudinary.uploader.destroy(imageToDelete.cloudinaryPublicId);
         }
 
         // Remove a imagem do banco de dados
