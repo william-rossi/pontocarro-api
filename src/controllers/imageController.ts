@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import Image from '../models/Image';
 import Vehicle from '../models/Vehicle';
 import cloudinary from '../config/cloudinary';
-import { v4 as uuidv4 } from 'uuid'; // Para gerar nomes de arquivo únicos
+import { v4 as uuidv4 } from 'uuid';
 
 const cleanCloudinaryUrl = (url: string, originalPublicId?: string) => {
     // Se temos o originalPublicId, construímos a URL correta diretamente
@@ -45,19 +45,13 @@ export const uploadImages = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Invalid vehicle ID' });
         }
 
-        // Verifica se o veículo existe e pertence ao usuário
-        console.log('Checking vehicle with ID:', vehicleId, 'and ownerId:', ownerId);
         const vehicle = await Vehicle.findOne({ _id: vehicleId, owner_id: ownerId });
 
         if (!vehicle) {
-            console.log('Vehicle not found for upload');
             return res.status(404).json({ message: 'Vehicle not found or you do not have permission to upload images for this vehicle' });
         }
-        console.log('Vehicle found, proceeding with upload');
 
         const newImageFiles = req.files as Express.Multer.File[];
-
-        // Verifica o limite total de imagens (existentes + novas)
         const existingImagesCount = await Image.countDocuments({ vehicle_id: vehicleId });
         if (existingImagesCount + newImageFiles.length > 10) {
             return res.status(400).json({ message: `Cannot upload more than 10 images. You already have ${existingImagesCount} images.` });
@@ -69,10 +63,8 @@ export const uploadImages = async (req: Request, res: Response) => {
         for (const file of newImageFiles) {
             // Gera um ID público único para o Cloudinary (sem incluir pasta no public_id)
             const uniqueId = uuidv4();
-            console.log('Uploading image with asset_folder: vehicles/' + vehicleId + ', public_id:', uniqueId);
 
             // Upload para Cloudinary usando asset_folder (Dynamic Folder Mode)
-            console.log('Uploading to asset_folder: vehicles/' + vehicleId + ', public_id:', uniqueId);
 
             const uploadResult = await cloudinary.uploader.upload(
                 `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
@@ -86,9 +78,6 @@ export const uploadImages = async (req: Request, res: Response) => {
                     crop: 'limit'
                 }
             );
-
-            console.log('Upload result public_id:', uploadResult.public_id);
-            console.log('Upload result secure_url:', uploadResult.secure_url);
 
             // Se use_asset_folder_as_public_id_prefix não funcionou, construir manualmente
             const finalPublicId = uploadResult.public_id.includes('vehicles/')
@@ -117,41 +106,6 @@ export const uploadImages = async (req: Request, res: Response) => {
     }
 };
 
-/**
- * @swagger
- * /images/{vehicleId}:
- *   get:
- *     summary: Obtém todas as imagens de um veículo específico
- *     tags: [Images]
- *     parameters:
- *       - in: path
- *         name: vehicleId
- *         schema:
- *           type: string
- *         required: true
- *         description: ID do veículo para o qual as imagens serão recuperadas
- *     responses:
- *       200:
- *         description: Lista de imagens para o veículo
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Image'
- *       404:
- *         description: Nenhuma imagem encontrada para este veículo
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: Erro do servidor
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
 export const getImagesByVehicleId = async (req: Request, res: Response) => {
     try {
         const { vehicleId } = req.params;
@@ -173,39 +127,6 @@ export const getImagesByVehicleId = async (req: Request, res: Response) => {
     }
 };
 
-/**
- * @swagger
- * /images/{vehicleId}/first:
- *   get:
- *     summary: Obtém a primeira imagem de um veículo específico
- *     tags: [Images]
- *     parameters:
- *       - in: path
- *         name: vehicleId
- *         schema:
- *           type: string
- *         required: true
- *         description: ID do veículo para o qual a primeira imagem será recuperada
- *     responses:
- *       200:
- *         description: Primeira imagem encontrada para o veículo
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Image'
- *       404:
- *         description: Nenhuma imagem encontrada para este veículo
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: Erro do servidor
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
 export const getFirstImageByVehicleId = async (req: Request, res: Response) => {
     try {
         const { vehicleId } = req.params;
@@ -225,39 +146,6 @@ export const getFirstImageByVehicleId = async (req: Request, res: Response) => {
     }
 };
 
-/**
- * @swagger
- * /images/{imageId}:
- *   get:
- *     summary: Obtém uma imagem específica pelo seu ID
- *     tags: [Images]
- *     parameters:
- *       - in: path
- *         name: imageId
- *         schema:
- *           type: string
- *         required: true
- *         description: ID da imagem a ser recuperada
- *     responses:
- *       200:
- *         description: Imagem encontrada
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Image'
- *       404:
- *         description: Imagem não encontrada
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: Erro do servidor
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
 export const getImageById = async (req: Request, res: Response) => {
     try {
         const { imageId } = req.params;
@@ -310,75 +198,3 @@ export const deleteImage = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Error deleting image', error: err.message });
     }
 };
-
-/**
- * @swagger
- * /vehicles/{id}/images/{imageId}:
-
- *   delete:
-
- *     summary: Exclui uma imagem de veículo
-
- *     tags: [Vehicles]
-
- *     security:
-
- *       - bearerAuth: []
-
- *     parameters:
-
- *       - in: path
-
- *         name: id
-
- *         schema:
-
- *           type: string
-
- *         required: true
-
- *         description: ID do veículo
-
- *       - in: path
-
- *         name: imageId
-
- *         schema:
-
- *           type: string
-
- *         required: true
-
- *         description: ID da imagem a ser excluída
- *     responses:
- *       200:
- *         description: Imagem excluída com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Imagem excluída com sucesso
- *       404:
- *         description: Não Encontrado/Erro de Permissão
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Veículo não encontrado ou você não tem permissão para excluir imagens deste veículo
- *       500:
- *         description: Erro do Servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Erro do Servidor
- */

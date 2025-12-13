@@ -1,13 +1,13 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import cors from 'cors'; // Importa o pacote cors para lidar com requisições de diferentes origens
+import cors from 'cors';
+import { apiReference } from '@scalar/express-api-reference';
 import { initializeDatabase } from './config/database';
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
 import vehicleRoutes from './routes/vehicleRoutes';
 import imageRoutes from './routes/imageRoutes';
-import swaggerUi from 'swagger-ui-express';
-import swaggerJsdoc from 'swagger-jsdoc';
+import { openApiSpec } from './schemas/scalarSchema';
 
 dotenv.config();
 
@@ -21,41 +21,20 @@ app.use(cors({
     ]
 }));
 
-// Definição do Swagger
-const swaggerOptions = {
-    swaggerDefinition: {
-        openapi: '3.0.0',
-        info: {
-            title: 'PontoCarro API',
-            version: '1.0.0',
-            description: 'Documentação da API para a aplicação PontoCarro',
-        },
-        servers: [
-            {
-                url: `http://localhost:${PORT}`,
-                description: 'Servidor de desenvolvimento',
-            },
-        ],
-    },
-    components: {
-        securitySchemes: {
-            bearerAuth: {
-                type: 'http',
-                scheme: 'bearer',
-                bearerFormat: 'JWT',
-            },
-        },
-    },
-    apis: ['./src/routes/*.ts', './src/controllers/*.ts', './src/routes/imageRoutes.ts', './src/schemas/swaggerSchemas.ts'], // Caminho para a documentação da API, adicionado swaggerSchemas.ts
-};
-
-const swaggerDocs = swaggerJsdoc(swaggerOptions);
-
-// Inicializa o banco de dados na inicialização do servidor
 initializeDatabase();
 
-// Usa o Swagger UI
-app.use('/swagger', swaggerUi.serve, swaggerUi.setup(swaggerDocs, { explorer: true, swaggerOptions: { persistAuthorization: true } }));
+// Documentação da API com Scalar
+app.use('/api-docs', apiReference({
+    theme: 'default',
+    content: openApiSpec,
+    metaData: {
+        title: 'PontoCarro API',
+        description: 'Documentação da API para a aplicação PontoCarro',
+    },
+    hideDownloadButton: true,
+    hideTestRequestButton: false,
+    showSidebar: true,
+}));
 
 // Usa as rotas
 app.use('/auth', authRoutes);

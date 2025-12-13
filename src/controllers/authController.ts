@@ -1,110 +1,16 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto'; // Importa crypto para gerar tokens
-import transporter from '../config/email'; // Importa o transportador do Nodemailer
-import User from '../models/User'; // Importa o modelo de Usuário do Mongoose
-import { z } from 'zod'; // Importa zod para erros de validação
+import crypto from 'crypto';
+import transporter from '../config/email';
+import User from '../models/User';
+import { z } from 'zod';
 import { createUserSchema, forgotPasswordSchema } from '../schemas/userSchema'; // Importa o esquema de usuário e o esquema de forgotPassword
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
-/**
- * @swagger
- * /auth/register:
- *   post:
- *     summary: Registrar um novo usuário
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - username
- *               - email
- *               - password
- *               - confirmPassword
- *             properties:
- *               username:
- *                 type: string
- *                 description: Nome completo do usuário
- *                 example: João Silva
- *               email:
- *                 type: string
- *                 format: email
- *                 description: E-mail do usuário
- *                 example: joao.silva@example.com
- *               password:
- *                 type: string
- *                 format: password
- *                 description: Senha do usuário (mínimo 8 caracteres)
- *                 example: Senha@123
- *               confirmPassword:
- *                 type: string
- *                 format: password
- *                 description: Confirmação de senha
- *                 example: Senha@123
- *               phone:
- *                 type: string
- *                 description: Número de telefone do usuário
- *                 example: '+55 (11) 98765-4321'
- *               city:
- *                 type: string
- *                 description: Cidade do usuário
- *                 example: São Paulo
- *               state:
- *                 type: string
- *                 description: Estado do usuário
- *                 example: SP
- *     responses:
- *       201:
- *         description: Usuário registrado com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Usuário registrado com sucesso
- *                 accessToken:
- *                   type: string
- *                   example: eyJhbGciOiJIUzI1Ni...
- *                 userId:
- *                   type: string
- *                   example: 60f...
- *                 refreshToken:
- *                   type: string
- *                   example: eyJhbGciOiJIUzI1Ni...
- *       400:
- *         description: Erro de Validação ou Usuário Existente
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Erro de validação
- *                 errors:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       path:
- *                         type: array
- *                         items:
- *                           type: string
- *                       message:
- *                         type: string
- *       500:
- *         description: Erro do Servidor
- */
 export const registerUser = async (req: Request, res: Response) => {
     try {
-        // Valida o corpo da requisição com o esquema zod
         const validatedData = createUserSchema.parse(req.body);
 
         const { username, email, password, phone, city, state } = validatedData;
@@ -137,7 +43,6 @@ export const registerUser = async (req: Request, res: Response) => {
 
         const accessToken = jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: '1h' });
 
-        // Gera um refresh token JWT
         const refreshToken = jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: '7d' }); // Refresh token válido por 7 dias
 
         newUser.refreshToken = refreshToken; // Armazena o refresh token JWT diretamente
@@ -153,78 +58,6 @@ export const registerUser = async (req: Request, res: Response) => {
     }
 };
 
-/**
- * @swagger
- * /auth/login:
- *   post:
- *     summary: Autenticar um usuário
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *                 description: E-mail do usuário
- *                 example: joao.silva@example.com
- *               password:
- *                 type: string
- *                 format: password
- *                 description: Senha do usuário
- *                 example: Senha@123
- *     responses:
- *       200:
- *         description: Login bem-sucedido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Login bem-sucedido
- *                 accessToken:
- *                   type: string
- *                   description: JWT para autenticação
- *                 user:
- *                   type: object
- *                   description: Objeto de usuário logado (excluindo senha e refreshToken)
- *                   properties:
- *                     _id:
- *                       type: string
- *                     username:
- *                       type: string
- *                     email:
- *                       type: string
- *                     phone:
- *                       type: string
- *                     city:
- *                       type: string
- *                     state:
- *                       type: string
- *                 refreshToken:
- *                   type: string
- *                   description: Token para obter novos access tokens
- *       400:
- *         description: Credenciais inválidas
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Credenciais inválidas
- *       500:
- *         description: Erro do Servidor
- */
 export const loginUser = async (req: Request, res: Response) => {
     const { email, password } = req.body;
 
@@ -263,50 +96,6 @@ export const loginUser = async (req: Request, res: Response) => {
     }
 };
 
-/**
- * @swagger
- * /auth/forgot-password:
- *   post:
- *     summary: Solicita redefinição de senha
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *                 description: E-mail do usuário para redefinição de senha
- *                 example: joao.silva@example.com
- *     responses:
- *       200:
- *         description: Instruções de redefinição de senha enviadas
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Instruções de redefinição de senha enviadas para o seu e-mail
- *       404:
- *         description: Usuário não encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Usuário não encontrado
- *       500:
- *         description: Erro do servidor
- */
 export const forgotPassword = async (req: Request, res: Response) => {
     try {
         const { email } = forgotPasswordSchema.parse(req.body);
@@ -348,57 +137,6 @@ export const forgotPassword = async (req: Request, res: Response) => {
     }
 };
 
-/**
- * @swagger
- * /auth/reset-password/{resetToken}:
- *   post:
- *     summary: Redefine a senha de um usuário
- *     tags: [Auth]
- *     parameters:
- *       - in: path
- *         name: resetToken
- *         required: true
- *         schema:
- *           type: string
- *         description: Token de redefinição de senha
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - password
- *             properties:
- *               password:
- *                 type: string
- *                 format: password
- *                 description: Nova senha (mínimo 8 caracteres)
- *                 example: NovaSenha@123
- *     responses:
- *       200:
- *         description: Senha redefinida com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Senha redefinida com sucesso!
- *       400:
- *         description: Requisição inválida
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Token inválido ou expirado
- *       500:
- *         description: Erro do Servidor
- */
 export const resetPassword = async (req: Request, res: Response) => {
     const { resetToken } = req.params;
     const { password } = req.body;
@@ -433,52 +171,6 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
 };
 
-/**
- * @swagger
- * /auth/refresh-token:
- *   post:
- *     summary: Gerar um novo access token usando um refresh token
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - refreshToken
- *             properties:
- *               refreshToken:
- *                 type: string
- *                 description: Token de atualização do usuário
- *                 example: seu_refresh_token_aqui
- *     responses:
- *       200:
- *         description: Novo access token gerado com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Novo access token gerado com sucesso
- *                 accessToken:
- *                   type: string
- *                   description: Novo access token JWT
- *       401:
- *         description: Refresh token inválido ou expirado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Refresh token inválido ou expirado
- *       500:
- *         description: Erro do servidor
- */
 export const refreshAccessToken = async (req: Request, res: Response) => {
     const { refreshToken } = req.body;
 

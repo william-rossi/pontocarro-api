@@ -19,10 +19,10 @@ const router = Router();
 router.get('/', getAllVehicles);
 router.get('/search', searchVehicles);
 router.get('/by-city-state', getVehiclesByCityAndState);
-router.get('/:id', getVehicleById); // <--- Nova rota para obter veículo por ID
+router.get('/:id', getVehicleById);
 
 // Authenticated routes
-router.get('/:id/my-vehicles', authenticateUser, getUserVehicles); // New route to get vehicles for the logged-in user
+router.get('/:id/my-vehicles', authenticateUser, getUserVehicles);
 router.post('/', authenticateUser, express.json(), addVehicle);
 router.put('/:id', authenticateUser, express.json(), updateVehicle);
 router.delete('/:id', authenticateUser, deleteVehicle);
